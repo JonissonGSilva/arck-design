@@ -4,6 +4,7 @@ import { NotificationProvider } from './contexts/NotificationContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ToastContainer from './components/common/ToastContainer'
+import ScrollToTop from './components/common/ScrollToTop'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import DashboardLayout from './components/layout/DashboardLayout'
@@ -33,6 +34,7 @@ function App() {
         <NotificationProvider>
           <ToastProvider>
             <Router>
+              <ScrollToTop />
         <Routes>
           {/* Public Routes with Header/Footer */}
           <Route
