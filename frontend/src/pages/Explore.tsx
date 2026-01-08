@@ -239,7 +239,7 @@ const Explore = () => {
             {filteredArchitects.map((architect) => (
               <Link
                 key={architect.id}
-                to={`/perfil/${architect.id}`}
+                to={`/architect/${architect.id}`}
                 className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 {/* Cover Image */}
@@ -276,7 +276,11 @@ const Explore = () => {
                   </div>
 
                   {/* Specialty */}
-                  <p className="text-primary-600 font-semibold mb-2">{architect.specialty}</p>
+                  <div className="mb-2">
+                    <span className="inline-flex items-center px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
+                      {architect.specialty}
+                    </span>
+                  </div>
 
                   {/* Description */}
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -288,7 +292,7 @@ const Explore = () => {
                     {architect.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium"
+                        className="px-2 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium"
                       >
                         {tag}
                       </span>

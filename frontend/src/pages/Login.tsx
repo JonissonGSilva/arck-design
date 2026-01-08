@@ -17,7 +17,7 @@ const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = (location.state as any)?.from?.pathname || (userType === 'arquiteto' ? '/arquiteto' : '/cliente')
+  const from = (location.state as any)?.from?.pathname || (userType === 'arquiteto' ? '/architect/dashboard' : '/client/dashboard')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -227,7 +227,7 @@ const Login = () => {
         {/* Sign Up Link */}
         <p className="mt-6 text-center text-sm text-stone-300">
           Não tem uma conta?{' '}
-          <Link to="/cadastro" className="text-primary-400 hover:text-primary-300 font-semibold">
+          <Link to="/signup" className="text-primary-400 hover:text-primary-300 font-semibold">
             Cadastre-se gratuitamente
           </Link>
         </p>

@@ -91,7 +91,7 @@ const PublicProfile = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-12">
         {/* Back Button */}
         <Link
-          to="/explorar"
+          to="/explore"
           className="inline-flex items-center gap-1 mb-4 md:mb-6 px-3 md:px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 text-sm font-medium shadow-sm"
         >
           <ArrowBackIcon sx={{ fontSize: 18 }} />
@@ -158,7 +158,7 @@ const PublicProfile = () => {
                   )}
                 </button>
                 <Link
-                  to={`/contato/${architect.id}`}
+                  to={`/architect/${architect.id}`}
                   className="px-4 md:px-6 py-2 md:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold text-xs md:text-sm"
                 >
                   Solicitar Orçamento
@@ -276,7 +276,7 @@ const PublicProfile = () => {
             {projects.map((project) => (
               <Link
                 key={project.id}
-                to={`/projeto/${project.id}`}
+                to={`/project/${project.id}`}
                 className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="relative aspect-video overflow-hidden">

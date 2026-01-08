@@ -140,7 +140,7 @@ const Pricing = () => {
 
                   {/* CTA Button */}
                   <Link
-                    to="/cadastro"
+                    to="/signup"
                     className={`block w-full text-center py-2.5 md:py-3 rounded-lg font-semibold text-sm md:text-base transition-all duration-200 mb-6 ${
                       plan.highlighted
                         ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg hover:shadow-xl'
@@ -225,7 +225,7 @@ const Pricing = () => {
             Junte-se a centenas de arquitetos que já usam nossa plataforma
           </p>
           <Link
-            to="/cadastro"
+            to="/signup"
             className="inline-block bg-white text-primary-700 px-6 md:px-8 py-2.5 md:py-3 rounded-lg font-bold text-sm md:text-base hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl transform hover:scale-105"
           >
             Começar Agora

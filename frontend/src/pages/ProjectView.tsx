@@ -218,7 +218,7 @@ const ProjectView = () => {
                   {project.tags.map((tag) => (
                     <Link
                       key={tag}
-                      to={`/explorar?tag=${tag}`}
+                      to={`/explore?tag=${tag}`}
                       className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm transition-colors"
                     >
                       {tag}
@@ -234,7 +234,7 @@ const ProjectView = () => {
             {/* Architect Info */}
             <div className="bg-white rounded-xl p-6 shadow-lg">
               <Link
-                to={`/perfil/${project.architect.id}`}
+                to={`/architect/${project.architect.id}`}
                 className="flex items-center gap-3 mb-4 group"
               >
                 <img
@@ -259,7 +259,7 @@ const ProjectView = () => {
               </Link>
 
               <Link
-                to={`/contato/${project.architect.id}`}
+                to={`/architect/${project.architect.id}`}
                 className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold text-center block"
               >
                 Solicitar Orçamento
@@ -273,7 +273,7 @@ const ProjectView = () => {
                 {images.slice(0, 3).map((image, index) => (
                   <Link
                     key={image.id}
-                    to={`/projeto/${index + 2}`}
+                    to={`/project/${index + 2}`}
                     className="group flex gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors"
                   >
                     <img

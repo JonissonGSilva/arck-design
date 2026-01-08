@@ -137,7 +137,7 @@ const CreatorProfile = () => {
                     <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
                   </button>
                   <Link
-                    to={`/contato/${architect.id}`}
+                    to={`/architect/${architect.id}`}
                     className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
                   >
                     Solicitar Orçamento
@@ -245,7 +245,7 @@ const CreatorProfile = () => {
             {projects.map((project) => (
               <Link
                 key={project.id}
-                to={`/projeto/${project.id}`}
+                to={`/project/${project.id}`}
                 className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="relative aspect-video overflow-hidden">
