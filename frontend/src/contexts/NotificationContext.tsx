@@ -39,7 +39,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       type: 'info',
       read: false,
       createdAt: new Date(Date.now() - 3600000),
-      link: '/arquiteto/bate-papo',
+      link: '/architect/messages',
     },
     {
       id: '2',
@@ -48,7 +48,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       type: 'success',
       read: false,
       createdAt: new Date(Date.now() - 7200000),
-      link: '/arquiteto/projetos',
+      link: '/architect/projects',
     },
     {
       id: '3',
@@ -57,7 +57,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       type: 'warning',
       read: true,
       createdAt: new Date(Date.now() - 86400000),
-      link: '/arquiteto/agenda',
+      link: '/architect/calendar',
     },
   ])
 
