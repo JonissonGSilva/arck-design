@@ -21,7 +21,7 @@ const FeaturesList = () => {
     features: [
       {
         icon: <Search className="h-5 w-5" />,
-        title: 'Explorar Portfólios',
+        title: 'Descobrir Portfólios',
         description: 'Navegue por projetos residenciais, comerciais e interiores de arquitetos verificados',
       },
       {

@@ -174,7 +174,7 @@ const ClientDashboard = () => {
             to="/explore"
             className="bg-white text-primary-600 px-8 py-3 rounded-lg hover:bg-primary-50 transition-colors font-semibold whitespace-nowrap flex items-center gap-2"
           >
-            Explorar Arquitetos
+            Buscar Arquitetos
             <ArrowRight className="h-5 w-5" />
           </Link>
         </div>

@@ -59,7 +59,7 @@ const FeaturedProjects = () => {
             Explore projetos residenciais, comerciais e de interiores compartilhados pela nossa comunidade de arquitetos.
           </p>
           <Link to="/explore" className="text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-2 mx-auto">
-            Explorar projetos
+            Descobrir projetos
             <ExternalLink className="h-4 w-4" />
           </Link>
         </div>

@@ -156,7 +156,7 @@ const Hero = () => {
                       className="flex-1 px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl font-semibold text-sm md:text-base transition-all duration-300 flex items-center justify-center gap-2 bg-accent-500 text-white shadow-lg shadow-accent-500/50 hover:bg-accent-600 hover:shadow-xl hover:shadow-accent-500/60 transform hover:scale-105"
                     >
                       <SearchIcon sx={{ fontSize: 20 }} />
-                      Explorar Arquitetos
+                      Buscar Arquitetos
                     </button>
                   </>
                 )}

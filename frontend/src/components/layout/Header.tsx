@@ -13,6 +13,8 @@ import arkLogo from '../../assets/ark-logo.png'
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
@@ -39,6 +41,27 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Handle scroll to hide/show header
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      // Show header when scrolling up or at top
+      if (currentScrollY < lastScrollY || currentScrollY < 10) {
+        setIsVisible(true)
+      } 
+      // Hide header when scrolling down
+      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false)
+      }
+
+      setLastScrollY(currentScrollY)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [lastScrollY])
+
   const handleLogout = () => {
     logout()
     setIsUserMenuOpen(false)
@@ -64,7 +87,11 @@ const Header = () => {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 transition-transform duration-300 ${
+        isVisible ? 'translate-y-0' : '-translate-y-full'
+      }`}
+    >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
@@ -75,7 +102,7 @@ const Header = () => {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             <Link to="/explore" className={navLinkClass('/explore')}>
-              Explorar
+              Descobrir
             </Link>
             <Link to="/pricing" className={navLinkClass('/pricing')}>
               Planos
@@ -192,7 +219,7 @@ const Header = () => {
               className="block text-sm text-gray-600 hover:text-gray-900 transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
-              Explorar
+              Descobrir
             </Link>
             <Link
               to="/pricing"
