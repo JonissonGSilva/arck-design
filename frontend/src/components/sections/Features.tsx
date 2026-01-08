@@ -199,13 +199,13 @@ const Features = () => {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
               <a
-                href="/cadastro"
+                href="/signup"
                 className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-white text-primary-700 rounded-lg md:rounded-xl hover:bg-gray-50 transition-all duration-200 font-bold text-sm md:text-base shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 Começar Gratuitamente
               </a>
               <a
-                href="/explorar"
+                href="/explore"
                 className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 rounded-lg md:rounded-xl hover:bg-white/20 transition-all duration-200 font-bold text-sm md:text-base"
               >
                 Ver Demonstração

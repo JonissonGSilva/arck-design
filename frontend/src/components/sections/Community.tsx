@@ -69,7 +69,7 @@ const Community = () => {
           {creators.map((creator) => (
             <Link
               key={creator.id}
-              to={`/criador/${creator.id}`}
+              to={`/architect/${creator.id}`}
               className="bg-white rounded-xl border border-gray-200 p-6 hover:border-primary-300 hover:shadow-lg transition-all duration-200"
             >
               {/* Avatar */}
@@ -89,9 +89,10 @@ const Community = () => {
               </div>
 
               {/* Specialty */}
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="h-4 w-4 text-primary-600" />
-                <span className="text-sm text-gray-700">{creator.specialty}</span>
+              <div className="mb-4">
+                <span className="inline-flex items-center px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
+                  {creator.specialty}
+                </span>
               </div>
 
               {/* Stats */}
@@ -110,7 +111,7 @@ const Community = () => {
 
         {/* CTA */}
         <div className="text-center">
-          <Link to="/explorar" className="text-primary-600 hover:text-primary-700 font-semibold text-lg">
+          <Link to="/explore" className="text-primary-600 hover:text-primary-700 font-semibold text-lg">
             Ver todos os arquitetos →
           </Link>
         </div>

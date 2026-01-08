@@ -33,14 +33,14 @@ const CTA = () => {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              to="/cadastro"
+              to="/signup"
               className="group bg-white text-primary-600 px-8 py-4 rounded-lg hover:bg-primary-50 transition-all duration-200 font-semibold text-lg shadow-xl hover:shadow-2xl flex items-center gap-2"
             >
               Criar minha conta
               <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
-              to="/planos"
+              to="/pricing"
               className="group bg-transparent text-white border-2 border-white/30 px-8 py-4 rounded-lg hover:border-white hover:bg-white/10 transition-all duration-200 font-semibold text-lg"
             >
               Ver planos e preços

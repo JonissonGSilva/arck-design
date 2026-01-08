@@ -58,7 +58,7 @@ const FeaturedProjects = () => {
           <p className="text-xl text-gray-600 mb-6">
             Explore projetos residenciais, comerciais e de interiores compartilhados pela nossa comunidade de arquitetos.
           </p>
-          <Link to="/explorar" className="text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-2 mx-auto">
+          <Link to="/explore" className="text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-2 mx-auto">
             Explorar projetos
             <ExternalLink className="h-4 w-4" />
           </Link>
@@ -69,7 +69,7 @@ const FeaturedProjects = () => {
           {projects.map((project) => (
             <Link
               key={project.id}
-              to={`/projeto/${project.id}`}
+              to={`/project/${project.id}`}
               className="group relative overflow-hidden rounded-xl bg-gray-100 aspect-[4/3] cursor-pointer hover:shadow-2xl transition-all duration-300"
             >
               {/* Image */}
