@@ -1,7 +1,7 @@
 import { 
   Search, Users, Eye, MessageSquare, FileText, Calendar,
   Building2, CheckSquare, Maximize2, Download, Star, Shield,
-  BarChart3, Settings, Zap, Globe, Palette, Clock
+  BarChart3, Zap, Globe, Palette
 } from 'lucide-react'
 
 interface FeatureCategory {

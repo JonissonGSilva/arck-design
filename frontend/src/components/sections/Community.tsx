@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MapPin, Star, Building2 } from 'lucide-react'
+import { MapPin, Star } from 'lucide-react'
 
 interface Creator {
   id: string

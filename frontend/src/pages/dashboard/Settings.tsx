@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, User, Building2, Bell, Lock, CreditCard, Globe, Mail, Moon, Sun, Save } from 'lucide-react'
+import { ArrowLeft, User, Building2, Bell, Lock, CreditCard, Globe, Save } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useToast } from '../../contexts/ToastContext'

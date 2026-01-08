@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { 
-  Plus, Search, Filter, MoreVertical, Eye, Download, 
+  Plus, Search, MoreVertical, Eye, Download, 
   Share2, Lock, Unlock, FolderTree, ArrowLeft, Calendar,
   CheckCircle, Clock, AlertCircle
 } from 'lucide-react'

@@ -4,16 +4,13 @@ import PersonIcon from '@mui/icons-material/Person'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import FolderIcon from '@mui/icons-material/Folder'
-import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const Hero = () => {
-  const [userType, setUserType] = useState<'cliente' | 'arquiteto'>('cliente')
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
 
   const handleUserTypeSelect = (type: 'cliente' | 'arquiteto') => {
-    setUserType(type)
     if (type === 'cliente') {
       navigate('/explore')
     } else {

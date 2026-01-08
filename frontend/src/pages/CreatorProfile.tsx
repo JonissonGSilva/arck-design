@@ -1,4 +1,4 @@
-import { MapPin, Star, Mail, Phone, Globe, Instagram, Facebook, Building2, Eye, Heart, ArrowLeft } from 'lucide-react'
+import { MapPin, Star, Mail, Phone, Globe, Instagram, Building2, Eye, Heart, ArrowLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 
