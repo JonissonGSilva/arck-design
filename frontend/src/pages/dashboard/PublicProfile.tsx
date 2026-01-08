@@ -11,6 +11,8 @@ import FacebookIcon from '@mui/icons-material/Facebook'
 import SaveIcon from '@mui/icons-material/Save'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import ApartmentIcon from '@mui/icons-material/Apartment'
+import CloseIcon from '@mui/icons-material/Close'
+import AddIcon from '@mui/icons-material/Add'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
 
@@ -32,16 +34,42 @@ const PublicProfile = () => {
     instagramUrl: 'https://instagram.com/carlosmendes.arquitetura',
     facebook: 'carlosmendes.arquitetura',
     facebookUrl: 'https://facebook.com/carlosmendes.arquitetura',
-    specialties: 'Residencial, Sustentabilidade, Modernismo, Interiores',
+    specialties: ['Residencial', 'Sustentabilidade', 'Modernismo', 'Interiores'],
     awards: 'Prêmio IAB 2023, Destaque Arquitetura Sustentável 2022',
     education: 'FAU-USP, Pós-graduação em Sustentabilidade',
   })
+  const [newSpecialty, setNewSpecialty] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     })
+  }
+
+  const handleAddSpecialty = () => {
+    const trimmed = newSpecialty.trim()
+    if (trimmed && !formData.specialties.includes(trimmed)) {
+      setFormData({
+        ...formData,
+        specialties: [...formData.specialties, trimmed],
+      })
+      setNewSpecialty('')
+    }
+  }
+
+  const handleRemoveSpecialty = (specialty: string) => {
+    setFormData({
+      ...formData,
+      specialties: formData.specialties.filter((s) => s !== specialty),
+    })
+  }
+
+  const handleSpecialtyKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAddSpecialty()
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -55,7 +83,7 @@ const PublicProfile = () => {
       {/* Header */}
       <div className="flex items-center gap-3 md:gap-4">
         <button
-          onClick={() => navigate('/arquiteto')}
+          onClick={() => navigate('/architect/dashboard')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowBackIcon sx={{ fontSize: 20 }} />
@@ -66,7 +94,7 @@ const PublicProfile = () => {
             <p className="text-gray-600 mt-1 text-xs md:text-sm">Personalize como os clientes veem você</p>
           </div>
           <a
-            href={`/perfil/${formData.username}`}
+            href={`/portfolio/${formData.username}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 text-sm font-medium"
@@ -170,7 +198,7 @@ const PublicProfile = () => {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Seu perfil será: arckdesign.com/perfil/{formData.username}
+                Seu perfil será: arckdesign.com/portfolio/{formData.username}
               </p>
             </div>
 
@@ -252,16 +280,53 @@ const PublicProfile = () => {
 
           <div className="mt-4">
             <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
-              Áreas de Atuação (separadas por vírgula)
+              Áreas de Atuação
             </label>
-            <input
-              type="text"
-              name="specialties"
-              value={formData.specialties}
-              onChange={handleChange}
-              className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="Ex: Residencial, Comercial, Sustentabilidade"
-            />
+            
+            {/* Display existing specialties as pills */}
+            {formData.specialties.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {formData.specialties.map((specialty) => (
+                  <span
+                    key={specialty}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 rounded-full text-sm font-medium"
+                  >
+                    {specialty}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSpecialty(specialty)}
+                      className="hover:bg-primary-100 rounded-full p-0.5 transition-colors"
+                      aria-label={`Remover ${specialty}`}
+                    >
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Input to add new specialty */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSpecialty}
+                onChange={(e) => setNewSpecialty(e.target.value)}
+                onKeyPress={handleSpecialtyKeyPress}
+                className="flex-1 px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Digite uma área de atuação e pressione Enter"
+              />
+              <button
+                type="button"
+                onClick={handleAddSpecialty}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm flex items-center gap-1.5"
+              >
+                <AddIcon sx={{ fontSize: 18 }} />
+                Adicionar
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Adicione as áreas de atuação que melhor descrevem seu trabalho
+            </p>
           </div>
         </div>
 
@@ -428,7 +493,7 @@ const PublicProfile = () => {
         <div className="flex items-center justify-end gap-3 md:gap-4 bg-white rounded-xl p-4 md:p-6 border border-gray-200 shadow-sm">
           <button
             type="button"
-            onClick={() => navigate('/arquiteto')}
+            onClick={() => navigate('/architect/dashboard')}
             className="px-4 md:px-6 py-2 md:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
           >
             Cancelar
