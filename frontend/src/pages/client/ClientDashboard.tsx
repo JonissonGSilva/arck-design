@@ -86,7 +86,7 @@ const ClientDashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Projetos Recentes</h2>
           <Link 
-            to="/cliente/projetos"
+            to="/client/projects"
             className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center gap-1"
           >
             Ver todos
@@ -98,7 +98,7 @@ const ClientDashboard = () => {
           {projects.map((project) => (
             <Link
               key={project.id}
-              to={`/cliente/projeto/${project.id}`}
+              to={`/client/projects/${project.id}`}
               className="group flex gap-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all hover:-translate-y-1"
             >
               <img
@@ -132,7 +132,7 @@ const ClientDashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Próximas Reuniões</h2>
           <Link 
-            to="/cliente/agendamentos"
+            to="/client/bookings"
             className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center gap-1"
           >
             Ver agenda
@@ -171,7 +171,7 @@ const ClientDashboard = () => {
             </p>
           </div>
           <Link
-            to="/explorar"
+            to="/explore"
             className="bg-white text-primary-600 px-8 py-3 rounded-lg hover:bg-primary-50 transition-colors font-semibold whitespace-nowrap flex items-center gap-2"
           >
             Explorar Arquitetos
