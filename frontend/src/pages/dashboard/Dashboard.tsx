@@ -1,3 +1,4 @@
+import React from 'react'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import FolderIcon from '@mui/icons-material/Folder'
 import PeopleIcon from '@mui/icons-material/People'
@@ -7,7 +8,6 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import AddIcon from '@mui/icons-material/Add'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import ScheduleIcon from '@mui/icons-material/Schedule'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import { Link } from 'react-router-dom'
 
@@ -27,7 +27,7 @@ const Dashboard = () => {
       title: 'Visualizações',
       value: '8.2k',
       change: '+15.3%',
-      icon: <VisibilityIcon sx={{ fontSize: 28 }} />,
+      icon: <VisibilityIcon sx={{ fontSize: 20 }} />,
       trend: 'up',
       color: 'from-blue-500 to-blue-600',
       bgGradient: 'from-blue-50 to-blue-100/50',
@@ -36,7 +36,7 @@ const Dashboard = () => {
       title: 'Projetos Ativos',
       value: '12',
       change: '+3',
-      icon: <FolderIcon sx={{ fontSize: 28 }} />,
+      icon: <FolderIcon sx={{ fontSize: 20 }} />,
       trend: 'up',
       color: 'from-primary-500 to-primary-600',
       bgGradient: 'from-primary-50 to-primary-100/50',
@@ -45,7 +45,7 @@ const Dashboard = () => {
       title: 'Clientes',
       value: '48',
       change: '+8',
-      icon: <PeopleIcon sx={{ fontSize: 28 }} />,
+      icon: <PeopleIcon sx={{ fontSize: 20 }} />,
       trend: 'up',
       color: 'from-green-500 to-green-600',
       bgGradient: 'from-green-50 to-green-100/50',
@@ -54,7 +54,7 @@ const Dashboard = () => {
       title: 'Receita Mensal',
       value: 'R$ 42k',
       change: '+22%',
-      icon: <AttachMoneyIcon sx={{ fontSize: 28 }} />,
+      icon: <AttachMoneyIcon sx={{ fontSize: 20 }} />,
       trend: 'up',
       color: 'from-accent-500 to-accent-600',
       bgGradient: 'from-accent-50 to-accent-100/50',
@@ -151,15 +151,15 @@ const Dashboard = () => {
           </Link>
         </div>
 
-        {/* Stats Grid - Design Completamente Novo */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Stats Grid - Design Compacto Horizontal */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1"
+              className="group relative overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
             >
               {/* Background Gradient Principal */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-95 group-hover:opacity-100 transition-opacity duration-500`}></div>
+              <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-95 group-hover:opacity-100 transition-opacity duration-300`}></div>
               
               {/* Padrão decorativo de fundo */}
               <div className="absolute inset-0 opacity-10">
@@ -168,44 +168,39 @@ const Dashboard = () => {
                 }} />
               </div>
               
-              <div className="relative p-6 md:p-7">
-                {/* Badge de Tendência no Topo */}
-                <div className="flex justify-end mb-4">
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-sm ${
-                    stat.trend === 'up' 
-                      ? 'bg-white/20 text-white border border-white/30' 
-                      : 'bg-red-500/80 text-white border border-red-400/50'
-                  }`}>
-                    <TrendingUpIcon sx={{ fontSize: 14 }} />
-                    {stat.change}
-                  </span>
-                </div>
-                
-                {/* Conteúdo Principal */}
-                <div className="space-y-4">
-                  {/* Ícone com Background Circular */}
-                  <div className="flex items-center justify-between">
-                    <div className="p-4 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 shadow-xl">
+              <div className="relative p-4">
+                <div className="flex items-center gap-3">
+                  {/* Ícone à Esquerda */}
+                  <div className="flex-shrink-0">
+                    <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 shadow-md">
                       <div className="text-white">
                         {stat.icon}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Valor e Título */}
-                  <div className="space-y-2">
-                    <h3 className="text-4xl md:text-5xl font-black text-white leading-tight drop-shadow-lg">
-                      {stat.value}
-                    </h3>
-                    <p className="text-sm md:text-base text-white/90 font-semibold uppercase tracking-wide">
-                      {stat.title}
-                    </p>
+                  {/* Dados à Direita */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xl md:text-2xl font-black text-white leading-tight drop-shadow-md">
+                          {stat.value}
+                        </h3>
+                        <p className="text-xs text-white/90 font-medium mt-0.5">
+                          {stat.title}
+                        </p>
+                      </div>
+                      {/* Badge de Tendência */}
+                      <span className={`inline-flex items-center gap-1 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm ${
+                        stat.trend === 'up' 
+                          ? 'bg-white/20 text-white border border-white/30' 
+                          : 'bg-red-500/80 text-white border border-red-400/50'
+                      }`}>
+                        <TrendingUpIcon sx={{ fontSize: 11 }} />
+                        {stat.change}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Elemento decorativo no canto inferior */}
-                <div className="absolute bottom-0 right-0 w-24 h-24 opacity-10">
-                  <div className={`absolute inset-0 bg-gradient-to-br from-white to-transparent rounded-tl-full`}></div>
                 </div>
               </div>
             </div>
@@ -230,7 +225,7 @@ const Dashboard = () => {
             </div>
             
             <div className="divide-y divide-gray-100">
-              {recentProjects.map((project, index) => (
+              {recentProjects.map((project) => (
                 <Link
                   key={project.id}
                   to={`/architect/projects/${project.id}`}
@@ -305,7 +300,7 @@ const Dashboard = () => {
             </div>
             
             <div className="divide-y divide-gray-100">
-              {upcomingEvents.map((event, index) => (
+              {upcomingEvents.map((event) => (
                 <Link
                   key={event.id}
                   to="/architect/calendar"
