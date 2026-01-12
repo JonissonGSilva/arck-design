@@ -225,7 +225,31 @@ npm run lint
 
 ## 🐛 Troubleshooting
 
-### Backend não inicia
+### Backend não inicia - Porta 8080 já em uso
+
+**Windows:**
+```powershell
+# Verificar qual processo está usando a porta
+netstat -ano | findstr :8080
+
+# Encerrar o processo (substitua PID pelo número encontrado)
+taskkill /PID <PID> /F
+
+# Ou encerrar todos os processos Go
+taskkill /IM main.exe /F
+taskkill /IM server.exe /F
+```
+
+**Linux/Mac:**
+```bash
+# Verificar qual processo está usando a porta
+lsof -i :8080
+
+# Encerrar o processo (substitua PID pelo número encontrado)
+kill -9 <PID>
+```
+
+### Backend não inicia - Outros problemas
 - Verifique se o MongoDB está acessível
 - Confirme que todas as variáveis do `.env` estão configuradas
 - Verifique se a porta 8080 está livre: `netstat -ano | findstr :8080` (Windows) ou `lsof -i :8080` (Linux/Mac)
