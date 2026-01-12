@@ -1,40 +1,89 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Mail, Lock, User, Building2, Eye, EyeOff, Briefcase, Ruler } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Mail, Lock, User, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
+import { isStrongPassword } from '../services'
+import type { UserRole } from '../types/api'
 
 const Signup = () => {
   const { showToast } = useToast()
+  const { register, isLoading } = useAuth()
+  const navigate = useNavigate()
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    accountType: 'arquiteto',
+    accountType: 'arquiteto' as UserRole,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validatePassword = (password: string) => {
+    const result = isStrongPassword(password)
+    return result
+  }
+
+  const passwordValidation = validatePassword(formData.password)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.password !== formData.confirmPassword) {
-      showToast('As senhas não coincidem', 'error')
+    setError('')
+
+    // Validações
+    if (formData.name.trim().length < 2) {
+      setError('O nome deve ter pelo menos 2 caracteres')
       return
     }
+
+    if (!passwordValidation.valid) {
+      setError('A senha não atende aos requisitos de segurança')
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('As senhas não coincidem')
+      return
+    }
+
     if (!acceptTerms) {
       showToast('Você deve aceitar os termos de uso', 'warning')
       return
     }
-    console.log('Cadastro:', formData)
-    showToast('Cadastro realizado com sucesso!', 'success')
+
+    const result = await register(
+      formData.email,
+      formData.password,
+      formData.name,
+      formData.accountType
+    )
+
+    if (result.success && result.user) {
+      showToast('Conta criada com sucesso! Bem-vindo ao ArckDesign.', 'success')
+      console.log('[Signup] Sucesso! User:', result.user)
+      
+      // Redirecionar com base na role do usuário retornado
+      const redirectPath = result.user.role === 'arquiteto' 
+        ? '/architect/dashboard' 
+        : '/client/dashboard'
+      
+      console.log('[Signup] Redirecionando para:', redirectPath)
+      
+      // Usar navigate do React Router para manter o estado
+      navigate(redirectPath, { replace: true })
+    } else {
+      console.log('[Signup] Erro:', result.error)
+      setError(result.error || 'Erro ao criar conta. Tente novamente.')
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   return (
@@ -108,6 +157,14 @@ const Signup = () => {
         {/* Signup Form */}
         <div className="bg-stone-800/80 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-stone-700/50">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
             {/* Name Field */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-stone-300 mb-2">
@@ -123,7 +180,7 @@ const Signup = () => {
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
-                  placeholder="Seu nome"
+                  placeholder="Digite seu nome completo"
                 />
               </div>
             </div>
@@ -131,7 +188,7 @@ const Signup = () => {
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-stone-300 mb-2">
-                Email
+                E-mail
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-stone-400" />
@@ -143,7 +200,7 @@ const Signup = () => {
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
-                  placeholder="seu@email.com"
+                  placeholder="Digite seu e-mail"
                 />
               </div>
             </div>
@@ -163,7 +220,7 @@ const Signup = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full pl-10 pr-12 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Crie uma senha forte"
                 />
                 <button
                   type="button"
@@ -173,6 +230,32 @@ const Signup = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              
+              {/* Password Requirements */}
+              {formData.password && (
+                <div className="mt-2 space-y-1">
+                  <PasswordRequirement
+                    met={formData.password.length >= 8}
+                    text="Pelo menos 8 caracteres"
+                  />
+                  <PasswordRequirement
+                    met={/[A-Z]/.test(formData.password)}
+                    text="Uma letra maiúscula"
+                  />
+                  <PasswordRequirement
+                    met={/[a-z]/.test(formData.password)}
+                    text="Uma letra minúscula"
+                  />
+                  <PasswordRequirement
+                    met={/[0-9]/.test(formData.password)}
+                    text="Um número"
+                  />
+                  <PasswordRequirement
+                    met={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)}
+                    text="Um caractere especial (!@#$%...)"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Confirm Password Field */}
@@ -189,7 +272,11 @@ const Signup = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-12 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
+                  className={`w-full pl-10 pr-12 py-3 bg-stone-900/50 border text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500 ${
+                    formData.confirmPassword && formData.password !== formData.confirmPassword
+                      ? 'border-red-500'
+                      : 'border-stone-700'
+                  }`}
                   placeholder="Repita a senha"
                 />
                 <button
@@ -200,6 +287,9 @@ const Signup = () => {
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <p className="text-red-400 text-xs mt-1">As senhas não coincidem</p>
+              )}
             </div>
 
             {/* Terms Checkbox */}
@@ -227,38 +317,23 @@ const Signup = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className={`w-full py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl ${
+              disabled={isLoading || !acceptTerms || !passwordValidation.valid || formData.password !== formData.confirmPassword}
+              className={`w-full py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                 formData.accountType === 'arquiteto'
                   ? 'bg-primary-600 hover:bg-primary-700 text-white'
                   : 'bg-accent-500 hover:bg-accent-600 text-white'
               }`}
             >
-              Criar conta gratuitamente
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Criando conta...
+                </>
+              ) : (
+                'Criar conta gratuitamente'
+              )}
             </button>
           </form>
-
-          {/* Social Signup - Temporariamente desabilitado */}
-          {/* <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-stone-700"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-stone-800/80 text-stone-400">Ou cadastre-se com</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <button className="flex items-center justify-center px-4 py-3 border border-stone-700 rounded-lg hover:bg-stone-700/50 transition-colors bg-stone-900/30">
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 mr-2" />
-                <span className="text-sm font-medium text-stone-300">Google</span>
-              </button>
-              <button className="flex items-center justify-center px-4 py-3 border border-stone-700 rounded-lg hover:bg-stone-700/50 transition-colors bg-stone-900/30">
-                <img src="https://www.facebook.com/favicon.ico" alt="Facebook" className="w-5 h-5 mr-2" />
-                <span className="text-sm font-medium text-stone-300">Facebook</span>
-              </button>
-            </div>
-          </div> */}
         </div>
 
         {/* Login Link */}
@@ -272,5 +347,17 @@ const Signup = () => {
     </div>
   )
 }
+
+// Componente auxiliar para requisitos de senha
+const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
+  <div className={`flex items-center gap-2 text-xs ${met ? 'text-green-400' : 'text-stone-400'}`}>
+    {met ? (
+      <CheckCircle className="h-3.5 w-3.5" />
+    ) : (
+      <div className="h-3.5 w-3.5 rounded-full border border-stone-500" />
+    )}
+    <span>{text}</span>
+  </div>
+)
 
 export default Signup

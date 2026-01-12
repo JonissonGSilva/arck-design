@@ -61,6 +61,19 @@ func SetupRouter() *gin.Engine {
 				images.DELETE("/:id", deleteImage)
 				images.POST("/:id/reprocess", reprocessImage)
 			}
+
+			// Messages
+			messages := protected.Group("/messages")
+			{
+				messages.GET("/conversations", listConversations)
+				messages.POST("/conversations", startConversation)
+				messages.GET("/conversations/:id", getConversation)
+				messages.GET("/conversations/:id/messages", getMessages)
+				messages.PUT("/conversations/:id/read", markAsRead)
+				messages.POST("", sendMessage)
+				messages.DELETE("/:id", deleteMessage)
+				messages.GET("/unread-count", getUnreadCount)
+			}
 		}
 	}
 

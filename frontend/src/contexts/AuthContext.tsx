@@ -1,22 +1,24 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { authService, tokenManager } from '../services'
+import type { User, UserRole } from '../types/api'
 
-export type UserType = 'arquiteto' | 'cliente' | null
-
-interface User {
-  id: string
-  name: string
-  email: string
-  type: UserType
-  avatar?: string
-}
+// ============================================
+// TIPOS
+// ============================================
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string, type: UserType) => Promise<boolean>
-  logout: () => void
+  login: (email: string, password: string, type: UserRole) => Promise<{ success: boolean; error?: string; user?: User }>
+  register: (email: string, password: string, name: string, role: UserRole) => Promise<{ success: boolean; error?: string; user?: User }>
+  logout: () => Promise<void>
+  refreshUser: () => Promise<void>
   isAuthenticated: boolean
   isLoading: boolean
 }
+
+// ============================================
+// CONTEXTO
+// ============================================
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -28,6 +30,10 @@ export const useAuth = () => {
   return context
 }
 
+// ============================================
+// PROVIDER
+// ============================================
+
 interface AuthProviderProps {
   children: ReactNode
 }
@@ -36,102 +42,138 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Carregar usuário do localStorage ao iniciar
+  // Carregar usuário ao iniciar
   useEffect(() => {
-    const storedUser = localStorage.getItem('arckdesign_user')
-    if (storedUser) {
+    const initAuth = async () => {
       try {
-        setUser(JSON.parse(storedUser))
+        // Verificar se há token válido
+        if (authService.isAuthenticated()) {
+          // Tentar obter usuário do servidor
+          const response = await authService.getCurrentUser()
+          if (response.data) {
+            setUser(response.data)
+          } else {
+            // Token inválido, limpar dados
+            tokenManager.clearTokens()
+          }
+        } else {
+          // Sem token, verificar se há usuário local (fallback)
+          const storedUser = authService.getStoredUser()
+          if (storedUser && tokenManager.getAccessToken()) {
+            // Tentar validar token
+            const response = await authService.getCurrentUser()
+            if (response.data) {
+              setUser(response.data)
+            } else {
+              tokenManager.clearTokens()
+            }
+          }
+        }
       } catch (error) {
-        localStorage.removeItem('arckdesign_user')
+        console.error('Erro ao inicializar autenticação:', error)
+        tokenManager.clearTokens()
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    initAuth()
   }, [])
 
-  const login = async (email: string, password: string, type: UserType): Promise<boolean> => {
+  // Escutar evento de logout (quando token expira)
+  useEffect(() => {
+    const handleLogout = () => {
+      setUser(null)
+    }
+
+    window.addEventListener('auth:logout', handleLogout)
+    return () => window.removeEventListener('auth:logout', handleLogout)
+  }, [])
+
+  // Login
+  const login = useCallback(async (
+    email: string,
+    password: string,
+    type: UserRole
+  ): Promise<{ success: boolean; error?: string; user?: User }> => {
     setIsLoading(true)
-    
-    // Simulação de login - em produção seria uma chamada à API
-    // Aqui você pode criar usuários de teste diferentes
-    const mockUsers: Record<string, { user: User; password: string }> = {
-      // Arquitetos
-      'arquiteto@arckdesign.com': {
-        user: {
-          id: '1',
-          name: 'Carlos Mendes',
-          email: 'arquiteto@arckdesign.com',
-          type: 'arquiteto',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-        },
-        password: '123456',
-      },
-      'carlos@arckdesign.com': {
-        user: {
-          id: '1',
-          name: 'Carlos Mendes',
-          email: 'carlos@arckdesign.com',
-          type: 'arquiteto',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-        },
-        password: '123456',
-      },
-      // Clientes
-      'cliente@arckdesign.com': {
-        user: {
-          id: '2',
-          name: 'Marina Silva',
-          email: 'cliente@arckdesign.com',
-          type: 'cliente',
-          avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-        },
-        password: '123456',
-      },
-      'marina@arckdesign.com': {
-        user: {
-          id: '2',
-          name: 'Marina Silva',
-          email: 'marina@arckdesign.com',
-          type: 'cliente',
-          avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-        },
-        password: '123456',
-      },
-    }
 
-    // Simular delay de API
-    await new Promise(resolve => setTimeout(resolve, 500))
+    try {
+      const response = await authService.login(email, password, type)
 
-    const userData = mockUsers[email.toLowerCase()]
-    
-    if (userData && userData.password === password) {
-      // Verificar se o tipo corresponde
-      if (userData.user.type === type) {
-        setUser(userData.user)
-        localStorage.setItem('arckdesign_user', JSON.stringify(userData.user))
-        setIsLoading(false)
-        return true
-      } else {
-        setIsLoading(false)
-        return false
+      if (response.data) {
+        setUser(response.data.user)
+        return { success: true, user: response.data.user }
       }
+
+      return { success: false, error: response.error || 'Erro ao fazer login' }
+    } catch (error) {
+      console.error('Erro no login:', error)
+      return { success: false, error: 'Erro de conexão. Tente novamente.' }
+    } finally {
+      setIsLoading(false)
     }
+  }, [])
 
-    setIsLoading(false)
-    return false
-  }
+  // Registro
+  const register = useCallback(async (
+    email: string,
+    password: string,
+    name: string,
+    role: UserRole
+  ): Promise<{ success: boolean; error?: string; user?: User }> => {
+    setIsLoading(true)
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('arckdesign_user')
-  }
+    try {
+      const response = await authService.register(email, password, name, role)
+
+      if (response.data) {
+        setUser(response.data.user)
+        return { success: true, user: response.data.user }
+      }
+
+      return { success: false, error: response.error || 'Erro ao criar conta' }
+    } catch (error) {
+      console.error('Erro no registro:', error)
+      return { success: false, error: 'Erro de conexão. Tente novamente.' }
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Logout
+  const logout = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      await authService.logout()
+    } finally {
+      setUser(null)
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Atualizar dados do usuário
+  const refreshUser = useCallback(async () => {
+    if (!authService.isAuthenticated()) return
+
+    try {
+      const response = await authService.getCurrentUser()
+      if (response.data) {
+        setUser(response.data)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error)
+    }
+  }, [])
 
   return (
     <AuthContext.Provider
       value={{
         user,
         login,
+        register,
         logout,
+        refreshUser,
         isAuthenticated: !!user,
         isLoading,
       }}
@@ -141,3 +183,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   )
 }
 
+// ============================================
+// TIPOS EXPORTADOS (para compatibilidade)
+// ============================================
+
+export type { UserRole as UserType } from '../types/api'

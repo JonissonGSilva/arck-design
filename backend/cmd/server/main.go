@@ -7,6 +7,7 @@ import (
 	"arck-design/backend/internal/config"
 	"arck-design/backend/internal/database"
 	"arck-design/backend/internal/services/cloudinary"
+	"arck-design/backend/internal/services/security"
 )
 
 func main() {
@@ -14,6 +15,12 @@ func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal("Failed to load config:", err)
+	}
+
+	// Initialize security token system
+	err = security.InitTokenSystem()
+	if err != nil {
+		log.Fatal("Failed to initialize security token system:", err)
 	}
 
 	// Connect to MongoDB

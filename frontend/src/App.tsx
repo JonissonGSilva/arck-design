@@ -63,7 +63,7 @@ function App() {
           <Route
             path="/architect/*"
             element={
-              <ProtectedRoute allowedTypes={['arquiteto']}>
+              <ProtectedRoute allowedRoles={['arquiteto']}>
                 <DashboardLayout>
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
@@ -83,14 +83,14 @@ function App() {
           <Route
             path="/client/*"
             element={
-              <ProtectedRoute allowedTypes={['cliente']}>
+              <ProtectedRoute allowedRoles={['cliente']}>
                 <ClientLayout>
                   <Routes>
                     <Route path="/dashboard" element={<ClientDashboard />} />
-                    <Route path="/projects" element={<div className="p-8 text-center text-gray-600">My Projects (in development)</div>} />
-                    <Route path="/favorites" element={<div className="p-8 text-center text-gray-600">Favorite Architects (in development)</div>} />
-                    <Route path="/messages" element={<div className="p-8 text-center text-gray-600">Messages (in development)</div>} />
-                    <Route path="/bookings" element={<div className="p-8 text-center text-gray-600">Bookings (in development)</div>} />
+                    <Route path="/projects" element={<div className="p-8 text-center text-stone-400">Meus Projetos (em desenvolvimento)</div>} />
+                    <Route path="/favorites" element={<div className="p-8 text-center text-stone-400">Arquitetos Favoritos (em desenvolvimento)</div>} />
+                    <Route path="/messages" element={<div className="p-8 text-center text-stone-400">Mensagens (em desenvolvimento)</div>} />
+                    <Route path="/bookings" element={<div className="p-8 text-center text-stone-400">Agendamentos (em desenvolvimento)</div>} />
                     <Route path="/settings" element={<Settings />} />
                   </Routes>
                 </ClientLayout>

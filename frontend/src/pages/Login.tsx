@@ -1,41 +1,105 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Lock, Building2, Eye, EyeOff, Briefcase, Ruler } from 'lucide-react'
+import { Mail, Lock, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { UserType } from '../contexts/AuthContext'
+import type { UserRole } from '../types/api'
 
 const Login = () => {
+  // DEBUG: Log quando o componente renderiza
+  console.log('=== LOGIN PAGE LOADED ===')
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [userType, setUserType] = useState<UserType>('arquiteto')
+  const [userType, setUserType] = useState<UserRole>('arquiteto')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
-  const { login } = useAuth()
+  const { login, isLoading, user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = (location.state as any)?.from?.pathname || (userType === 'arquiteto' ? '/architect/dashboard' : '/client/dashboard')
+  // Redirecionar se já estiver autenticado (ao entrar na página)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const redirectPath = user.role === 'arquiteto' ? '/architect/dashboard' : '/client/dashboard'
+      navigate(redirectPath, { replace: true })
+    }
+  }, [isAuthenticated, user, navigate])
+
+  // Função para obter o caminho de redirecionamento
+  const getRedirectPath = (userRole: string) => {
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname
+    
+    if (from) {
+      const isArchitectPath = from.startsWith('/architect')
+      const isClientPath = from.startsWith('/client')
+      
+      if ((userRole === 'arquiteto' && isArchitectPath) || 
+          (userRole === 'cliente' && isClientPath)) {
+        return from
+      }
+    }
+    
+    return userRole === 'arquiteto' ? '/architect/dashboard' : '/client/dashboard'
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('=== FORM SUBMITTED ===')
     setError('')
-    setIsLoading(true)
 
+    if (!email.trim()) {
+      setError('Digite seu e-mail')
+      return
+    }
+
+    if (!password) {
+      setError('Digite sua senha')
+      return
+    }
+
+    console.log('[Login] Iniciando login...', { email, userType })
+    
     try {
-      const success = await login(email, password, userType)
+      const result = await login(email, password, userType)
       
-      if (success) {
-        navigate(from, { replace: true })
+      console.log('[Login] Resultado completo:', JSON.stringify(result, null, 2))
+      
+      if (result.success && result.user) {
+        console.log('[Login] Sucesso! User:', result.user)
+        console.log('[Login] User role:', result.user.role)
+        
+        // Redirecionar imediatamente com o user retornado
+        const redirectPath = getRedirectPath(result.user.role)
+        console.log('[Login] Redirecionando para:', redirectPath)
+        
+        // Usar navigate do React Router para manter o estado
+        navigate(redirectPath, { replace: true })
       } else {
-        setError('Email ou senha incorretos, ou tipo de conta não corresponde.')
+        console.log('[Login] Falha:', result.error)
+        
+        // Mensagens de erro em português
+        let errorMessage = result.error || 'Erro ao fazer login'
+        
+        // Traduzir erros comuns
+        if (errorMessage.toLowerCase().includes('invalid credentials') || 
+            errorMessage.toLowerCase().includes('wrong password')) {
+          errorMessage = 'E-mail ou senha incorretos'
+        } else if (errorMessage.toLowerCase().includes('user not found')) {
+          errorMessage = 'Usuário não encontrado'
+        } else if (errorMessage.toLowerCase().includes('type mismatch') ||
+                   errorMessage.toLowerCase().includes('role mismatch')) {
+          errorMessage = 'Tipo de conta não corresponde ao cadastro'
+        } else if (errorMessage.toLowerCase().includes('too many')) {
+          errorMessage = 'Muitas tentativas. Aguarde um momento e tente novamente.'
+        }
+        
+        setError(errorMessage)
       }
     } catch (err) {
-      setError('Erro ao fazer login. Tente novamente.')
-    } finally {
-      setIsLoading(false)
+      console.error('[Login] Erro catch:', err)
+      setError('Erro de conexão. Tente novamente.')
     }
   }
 
@@ -112,15 +176,16 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
             )}
 
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-stone-300 mb-2">
-                Email
+                E-mail
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-stone-400" />
@@ -131,15 +196,9 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
-                  placeholder="seu@email.com"
+                  placeholder="Digite seu e-mail"
                 />
               </div>
-              <p className="text-xs text-stone-400 mt-1">
-                {userType === 'arquiteto' 
-                  ? 'Teste: arquiteto@arckdesign.com ou carlos@arckdesign.com'
-                  : 'Teste: cliente@arckdesign.com ou marina@arckdesign.com'
-                }
-              </p>
             </div>
 
             {/* Password Field */}
@@ -156,7 +215,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
-                  placeholder="••••••••"
+                  placeholder="Digite sua senha"
                 />
                 <button
                   type="button"
@@ -166,7 +225,6 @@ const Login = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              <p className="text-xs text-stone-400 mt-1">Senha padrão: 123456</p>
             </div>
 
             {/* Remember Me & Forgot Password */}
@@ -189,38 +247,22 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`w-full py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                 userType === 'arquiteto'
                   ? 'bg-primary-600 hover:bg-primary-700 text-white'
                   : 'bg-accent-500 hover:bg-accent-600 text-white'
               }`}
             >
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                'Entrar'
+              )}
             </button>
           </form>
-
-          {/* Social Login - Temporariamente desabilitado */}
-          {/* <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-stone-700"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-stone-800/80 text-stone-400">Ou continue com</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <button className="flex items-center justify-center px-4 py-3 border border-stone-700 rounded-lg hover:bg-stone-700/50 transition-colors bg-stone-900/30">
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 mr-2" />
-                <span className="text-sm font-medium text-stone-300">Google</span>
-              </button>
-              <button className="flex items-center justify-center px-4 py-3 border border-stone-700 rounded-lg hover:bg-stone-700/50 transition-colors bg-stone-900/30">
-                <img src="https://www.facebook.com/favicon.ico" alt="Facebook" className="w-5 h-5 mr-2" />
-                <span className="text-sm font-medium text-stone-300">Facebook</span>
-              </button>
-            </div>
-          </div> */}
         </div>
 
         {/* Sign Up Link */}

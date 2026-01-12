@@ -5,8 +5,10 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"arck-design/backend/internal/api/dto"
 	"arck-design/backend/internal/models"
 	"arck-design/backend/internal/services/project"
+	"arck-design/backend/internal/services/security"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -22,16 +24,13 @@ func listProjects(c *gin.Context) {
 
 	projects, total, err := getProjectsByUser(userIDStr, status, category, page, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao carregar projetos"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"projects": projects,
-		"total":    total,
-		"page":     page,
-		"limit":    limit,
-	})
+	// Usar DTO seguro que não expõe IDs internos
+	response := dto.NewProjectListPaginatedResponse(projects, int(total), page, limit)
+	c.JSON(http.StatusOK, response)
 }
 
 func createProject(c *gin.Context) {
@@ -49,17 +48,17 @@ func createProject(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos. Título e categoria são obrigatórios."})
 		return
 	}
 
 	userObjID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Erro de autenticação"})
 		return
 	}
 
-	project := &models.Project{
+	proj := &models.Project{
 		UserID:      userObjID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -74,63 +73,97 @@ func createProject(c *gin.Context) {
 		Featured:    false,
 	}
 
-	createdProject, err := createProjectInDB(project)
+	createdProject, err := createProjectInDB(proj)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao criar projeto"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, createdProject)
+	// Usar DTO seguro
+	response := dto.NewProjectResponse(createdProject)
+	c.JSON(http.StatusCreated, response)
 }
 
 func getProject(c *gin.Context) {
-	projectID := c.Param("id")
+	projectToken := c.Param("id")
 	userID, _ := c.Get("userID")
 
-	project, err := getProjectByID(projectID, userID.(string))
+	// Decodificar token para obter ID real
+	projectID, err := security.DecodeProjectID(projectToken)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
 		return
 	}
 
-	c.JSON(http.StatusOK, project)
+	proj, err := getProjectByID(projectID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
+		return
+	}
+
+	// Usar DTO seguro
+	response := dto.NewProjectResponse(proj)
+	c.JSON(http.StatusOK, response)
 }
 
 func updateProject(c *gin.Context) {
-	projectID := c.Param("id")
+	projectToken := c.Param("id")
 	userID, _ := c.Get("userID")
+
+	// Decodificar token para obter ID real
+	projectID, err := security.DecodeProjectID(projectToken)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
+		return
+	}
 
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos"})
 		return
 	}
 
 	updatedProject, err := updateProjectInDB(projectID, userID.(string), req)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado ou sem permissão"})
 		return
 	}
 
-	c.JSON(http.StatusOK, updatedProject)
+	// Usar DTO seguro
+	response := dto.NewProjectResponse(updatedProject)
+	c.JSON(http.StatusOK, response)
 }
 
 func deleteProject(c *gin.Context) {
-	projectID := c.Param("id")
+	projectToken := c.Param("id")
 	userID, _ := c.Get("userID")
 
-	err := deleteProjectFromDB(projectID, userID.(string))
+	// Decodificar token para obter ID real
+	projectID, err := security.DecodeProjectID(projectToken)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Project deleted successfully"})
+	err = deleteProjectFromDB(projectID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado ou sem permissão"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Projeto excluído com sucesso"})
 }
 
 func updateProjectVisibility(c *gin.Context) {
-	projectID := c.Param("id")
+	projectToken := c.Param("id")
 	userID, _ := c.Get("userID")
+
+	// Decodificar token para obter ID real
+	projectID, err := security.DecodeProjectID(projectToken)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
+		return
+	}
 
 	var req struct {
 		AccessType string `json:"accessType" binding:"required"`
@@ -138,46 +171,55 @@ func updateProjectVisibility(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipo de acesso é obrigatório"})
 		return
 	}
 
-	project, err := updateProjectVisibilityInDB(projectID, userID.(string), req.AccessType, req.Password)
+	proj, err := updateProjectVisibilityInDB(projectID, userID.(string), req.AccessType, req.Password)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado ou sem permissão"})
 		return
 	}
 
-	c.JSON(http.StatusOK, project)
+	// Usar DTO seguro
+	response := dto.NewProjectResponse(proj)
+	c.JSON(http.StatusOK, response)
 }
 
 func uploadProjectCover(c *gin.Context) {
 	// Verify authentication - userID must exist from authMiddleware
 	userID, exists := c.Get("userID")
 	if !exists || userID == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Autenticação necessária"})
 		c.Abort()
 		return
 	}
 
 	userIDStr, ok := userID.(string)
 	if !ok || userIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user authentication"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Erro de autenticação"})
 		c.Abort()
 		return
 	}
 
 	// TODO: Implement image upload
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Funcionalidade em desenvolvimento"})
 }
 
 func getProjectStats(c *gin.Context) {
-	projectID := c.Param("id")
+	projectToken := c.Param("id")
 	userID, _ := c.Get("userID")
+
+	// Decodificar token para obter ID real
+	projectID, err := security.DecodeProjectID(projectToken)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
+		return
+	}
 
 	stats, err := getProjectStatsFromDB(projectID, userID.(string))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado ou sem permissão"})
 		return
 	}
 
@@ -185,15 +227,23 @@ func getProjectStats(c *gin.Context) {
 }
 
 func getProjectImages(c *gin.Context) {
-	projectID := c.Param("id")
+	projectToken := c.Param("id")
 	userID, _ := c.Get("userID")
 
-	images, err := getProjectImagesFromDB(projectID, userID.(string))
+	// Decodificar token para obter ID real
+	projectID, err := security.DecodeProjectID(projectToken)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado"})
 		return
 	}
 
+	images, err := getProjectImagesFromDB(projectID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Projeto não encontrado ou sem permissão"})
+		return
+	}
+
+	// TODO: Retornar DTOs seguros para imagens
 	c.JSON(http.StatusOK, images)
 }
 
@@ -253,4 +303,3 @@ func getProjectStatsFromDB(projectID, userID string) (map[string]interface{}, er
 func getProjectImagesFromDB(projectID, userID string) ([]*models.Image, error) {
 	return project.GetProjectImages(projectID, userID)
 }
-

@@ -42,7 +42,7 @@ func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Autenticação necessária"})
 			c.Abort()
 			return
 		}
@@ -50,7 +50,7 @@ func authMiddleware() gin.HandlerFunc {
 		// Extract token from "Bearer <token>"
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Formato de autenticação inválido"})
 			c.Abort()
 			return
 		}
@@ -58,7 +58,7 @@ func authMiddleware() gin.HandlerFunc {
 		token := parts[1]
 		claims, err := auth.ValidateJWT(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Sessão expirada. Faça login novamente."})
 			c.Abort()
 			return
 		}
