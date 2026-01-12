@@ -10,89 +10,200 @@ arck-design/
 │   ├── src/          # Código fonte do frontend
 │   ├── package.json  # Dependências do frontend
 │   └── ...
-├── backend/          # Backend (em desenvolvimento)
+├── backend/          # Backend Go + MongoDB + Cloudinary
+│   ├── cmd/          # Ponto de entrada do servidor
+│   ├── internal/     # Código interno do backend
 │   └── README.md     # Documentação do backend
 └── docs/             # Documentação do projeto
 ```
 
-## 🚀 Início Rápido
+## 📋 Pré-requisitos
 
-### Usando Makefile (Linux/Mac) ou make.bat (Windows)
+### Frontend
+- **Node.js** 18+ e npm
+- Verificar: `node --version` e `npm --version`
 
-A forma mais fácil de configurar e executar o projeto é usando os comandos Makefile ou make.bat:
+### Backend
+- **Go** 1.21+
+- Verificar: `go version`
+- **MongoDB Atlas** (ou MongoDB local)
+- **Cloudinary** (conta gratuita)
 
-**Linux/Mac:**
+## 🚀 Como Rodar o Projeto
+
+### 1. Configuração Inicial
+
+#### Backend
+
+1. Navegue para a pasta do backend:
 ```bash
-# Setup inicial (instala todas as dependências)
+cd backend
+```
+
+2. Copie o arquivo de exemplo de variáveis de ambiente:
+```bash
+# Windows
+copy .env.example .env
+
+# Linux/Mac
+cp .env.example .env
+```
+
+3. Configure as variáveis no arquivo `.env`:
+   - `MONGODB_URI` - URI de conexão do MongoDB Atlas
+   - `JWT_SECRET` - Chave secreta para JWT (gerar com `openssl rand -base64 32`)
+   - `CLOUDINARY_CLOUD_NAME` - Nome da conta Cloudinary
+   - `CLOUDINARY_API_KEY` - API Key do Cloudinary
+   - `CLOUDINARY_API_SECRET` - API Secret do Cloudinary
+   
+   Veja `backend/.env.example` para todas as variáveis necessárias.
+
+4. Instale as dependências do Go:
+```bash
+go mod download
+```
+
+#### Frontend
+
+1. Navegue para a pasta do frontend:
+```bash
+cd frontend
+```
+
+2. Copie o arquivo de exemplo de variáveis de ambiente:
+```bash
+# Windows
+copy .env.example .env
+
+# Linux/Mac
+cp .env.example .env
+```
+
+3. Configure as variáveis no arquivo `.env`:
+   - `VITE_API_URL` - URL do backend (padrão: `http://localhost:8080`)
+   - `VITE_API_BASE_URL` - URL base da API (padrão: `http://localhost:8080/api/v1`)
+   
+   Veja `frontend/.env.example` para todas as variáveis.
+
+4. Instale as dependências:
+```bash
+npm install
+```
+
+### 2. Executando os Servidores
+
+#### Opção 1: Rodar em Terminais Separados (Recomendado)
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+go run cmd/server/main.go
+```
+
+O backend estará rodando em: `http://localhost:8080`
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+O frontend estará rodando em: `http://localhost:5173`
+
+#### Opção 2: Usando Makefile (Linux/Mac)
+
+```bash
+# Instalar dependências
 make setup
 
-# Iniciar servidor de desenvolvimento
-make dev
+# Rodar backend em background
+make dev-backend &
 
-# Ver todos os comandos disponíveis
-make help
+# Rodar frontend
+make dev-frontend
 ```
 
-**Windows:**
-```cmd
-# Setup inicial (instala todas as dependências)
-make.bat setup
-# ou no PowerShell: .\make.bat setup
+#### Opção 3: Usando make.bat (Windows)
 
-# Iniciar servidor de desenvolvimento
-make.bat dev
-# ou no PowerShell: .\make.bat dev
+```powershell
+# Instalar dependências
+.\make.bat setup
 
-# Ver todos os comandos disponíveis
-make.bat help
-# ou no PowerShell: .\make.bat help
+# Rodar backend (em um terminal)
+.\make.bat dev-backend
+
+# Rodar frontend (em outro terminal)
+.\make.bat dev-frontend
 ```
 
-### Comandos Disponíveis
+### 3. Verificando se Está Funcionando
 
-#### Setup
-- `make setup` / `make.bat setup` - Instala todas as dependências do projeto
-- `make install-frontend` / `make.bat install-frontend` - Instala dependências do frontend
-- `make install-backend` / `make.bat install-backend` - Instala dependências do backend
-- `make check-node` / `make.bat check-node` - Verifica se Node.js está instalado
+1. **Backend Health Check:**
+   - Acesse: `http://localhost:8080/health`
+   - Deve retornar: `{"status":"ok","service":"arck-design-api"}`
 
-#### Desenvolvimento
-- `make dev` / `make.bat dev` - Inicia servidor de desenvolvimento do frontend
-- `make dev-frontend` / `make.bat dev-frontend` - Inicia servidor de desenvolvimento do frontend
-- `make dev-backend` / `make.bat dev-backend` - Inicia servidor de desenvolvimento do backend
+2. **Frontend:**
+   - Acesse: `http://localhost:5173`
+   - A página inicial deve carregar
 
-#### Build
-- `make build` / `make.bat build` - Cria build de produção do frontend e backend
-- `make build-frontend` / `make.bat build-frontend` - Cria build de produção do frontend
-- `make preview` / `make.bat preview` - Preview do build de produção
+3. **Testar Autenticação:**
+   - Acesse: `http://localhost:5173/login`
+   - Use as credenciais de teste (veja seção abaixo)
 
-#### Limpeza
-- `make clean` / `make.bat clean` - Remove node_modules e arquivos de build
-- `make clean-frontend` / `make.bat clean-frontend` - Limpa apenas o frontend
-- `make clean-cache` / `make.bat clean-cache` - Limpa cache do Vite
+## 🔧 Comandos Disponíveis
 
-### Método Manual
+### Backend
 
-Se preferir executar os comandos manualmente:
-
-**Frontend:**
 ```bash
-# Navegar para a pasta frontend
+cd backend
+
+# Rodar servidor
+go run cmd/server/main.go
+
+# Build para produção
+go build -o server ./cmd/server
+
+# Executar testes
+go test ./...
+
+# Ver dependências
+go list -m all
+```
+
+### Frontend
+
+```bash
 cd frontend
 
-# Instalar dependências
-npm install
-
-# Iniciar servidor de desenvolvimento
+# Rodar servidor de desenvolvimento
 npm run dev
 
 # Build para produção
 npm run build
+
+# Preview do build
+npm run preview
+
+# Lint
+npm run lint
 ```
 
-**Backend:**
+## 🌐 URLs e Portas
 
-O backend está em desenvolvimento. Consulte `backend/README.md` para mais informações.
+- **Frontend:** `http://localhost:5173`
+- **Backend API:** `http://localhost:8080`
+- **API Base:** `http://localhost:8080/api/v1`
+- **Health Check:** `http://localhost:8080/health`
+
+## 🔐 Credenciais de Teste
+
+### Arquiteto
+- Email: `arquiteto@arckdesign.com`
+- Senha: `123456`
+
+### Cliente
+- Email: `cliente@arckdesign.com`
+- Senha: `123456`
 
 ## 🛠️ Tecnologias
 
@@ -105,24 +216,36 @@ O backend está em desenvolvimento. Consulte `backend/README.md` para mais infor
 - **React Router** - Roteamento
 
 ### Backend
-- 🚧 Em desenvolvimento
+- **Go 1.21+** - Linguagem de programação
+- **Gin** - Framework web
+- **MongoDB Atlas** - Banco de dados NoSQL
+- **JWT** - Autenticação com tokens
+- **Cloudinary** - Storage e processamento de imagens
+- **bcrypt** - Hash de senhas
+
+## 🐛 Troubleshooting
+
+### Backend não inicia
+- Verifique se o MongoDB está acessível
+- Confirme que todas as variáveis do `.env` estão configuradas
+- Verifique se a porta 8080 está livre: `netstat -ano | findstr :8080` (Windows) ou `lsof -i :8080` (Linux/Mac)
+
+### Frontend não conecta ao backend
+- Verifique se o backend está rodando em `http://localhost:8080`
+- Confirme a variável `VITE_API_URL` no `.env` do frontend
+- Verifique o console do navegador para erros de CORS
+
+### Erro de autenticação
+- Verifique se o JWT_SECRET está configurado no backend
+- Confirme que o token está sendo enviado no header `Authorization: Bearer <token>`
 
 ## 📚 Documentação
 
+- [Backend README](./backend/README.md) - Documentação completa do backend
 - [Arquitetura Técnica](./docs/ARQUITETURA_TECNICA.md)
 - [Funcionalidades](./FUNCIONALIDADES.md)
 - [Rotas](./ROTAS.md)
 - [Guia de Login](./GUIA_LOGIN.md)
-
-## 👥 Usuários de Teste
-
-### Arquiteto
-- Email: `arquiteto@arckdesign.com`
-- Senha: `123456`
-
-### Cliente
-- Email: `cliente@arckdesign.com`
-- Senha: `123456`
 
 ## 📝 Licença
 
