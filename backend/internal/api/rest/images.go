@@ -11,9 +11,22 @@ import (
 )
 
 func uploadImage(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	// Verify authentication - userID must exist from authMiddleware
+	userID, exists := c.Get("userID")
+	if !exists || userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		c.Abort()
+		return
+	}
+
+	userIDStr, ok := userID.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user authentication"})
+		c.Abort()
+		return
+	}
+
 	projectID := c.PostForm("projectId")
-	
 	if projectID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "projectId is required"})
 		return
@@ -45,7 +58,7 @@ func uploadImage(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
-	uploadedImage, err := image.UploadImage(ctx, fileData, file.Filename, projectID, userID.(string))
+	uploadedImage, err := image.UploadImage(ctx, fileData, file.Filename, projectID, userIDStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -55,6 +68,21 @@ func uploadImage(c *gin.Context) {
 }
 
 func uploadImagesBatch(c *gin.Context) {
+	// Verify authentication - userID must exist from authMiddleware
+	userID, exists := c.Get("userID")
+	if !exists || userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		c.Abort()
+		return
+	}
+
+	userIDStr, ok := userID.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user authentication"})
+		c.Abort()
+		return
+	}
+
 	// TODO: Implement batch image upload
 	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
 }

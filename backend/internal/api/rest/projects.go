@@ -152,6 +152,21 @@ func updateProjectVisibility(c *gin.Context) {
 }
 
 func uploadProjectCover(c *gin.Context) {
+	// Verify authentication - userID must exist from authMiddleware
+	userID, exists := c.Get("userID")
+	if !exists || userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		c.Abort()
+		return
+	}
+
+	userIDStr, ok := userID.(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user authentication"})
+		c.Abort()
+		return
+	}
+
 	// TODO: Implement image upload
 	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
 }
