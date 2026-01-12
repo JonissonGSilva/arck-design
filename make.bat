@@ -78,10 +78,10 @@ echo [OK] Dependencias do frontend instaladas
 goto end
 
 :install-backend
-if exist "%BACKEND_DIR%\package.json" (
-    echo [INFO] Instalando dependencias do backend...
+if exist "%BACKEND_DIR%\go.mod" (
+    echo [INFO] Instalando dependencias do backend Go...
     cd %BACKEND_DIR%
-    call npm install
+    call go mod download
     if errorlevel 1 (
         echo [ERRO] Falha ao instalar dependencias do backend
         cd ..
@@ -90,7 +90,7 @@ if exist "%BACKEND_DIR%\package.json" (
     cd ..
     echo [OK] Dependencias do backend instaladas
 ) else (
-    echo [AVISO] Backend ainda nao possui package.json. Pulando instalacao do backend.
+    echo [AVISO] Backend ainda nao possui go.mod. Pulando instalacao do backend.
 )
 goto end
 
@@ -121,13 +121,13 @@ cd ..
 goto end
 
 :dev-backend
-if exist "%BACKEND_DIR%\package.json" (
-    echo [INFO] Iniciando servidor de desenvolvimento do backend...
+if exist "%BACKEND_DIR%\go.mod" (
+    echo [INFO] Iniciando servidor de desenvolvimento do backend Go...
     cd %BACKEND_DIR%
-    call npm run dev
+    go run cmd/server/main.go
     cd ..
 ) else (
-    echo [ERRO] Backend ainda nao possui package.json.
+    echo [ERRO] Backend ainda nao possui go.mod. Certifique-se de que o backend esta configurado corretamente.
 )
 goto end
 
@@ -156,18 +156,19 @@ echo [OK] Build do frontend concluido! Arquivos em %FRONTEND_DIR%\dist
 goto end
 
 :build-backend
-if exist "%BACKEND_DIR%\package.json" (
-    echo [INFO] Gerando build de producao do backend...
+if exist "%BACKEND_DIR%\go.mod" (
+    echo [INFO] Gerando build de producao do backend Go...
     cd %BACKEND_DIR%
-    call npm run build 2>nul
+    call go build -o server.exe ./cmd/server
     if errorlevel 1 (
-        echo [AVISO] Script de build nao encontrado no backend
-    ) else (
-        echo [OK] Build do backend concluido
+        echo [ERRO] Falha ao fazer build do backend
+        cd ..
+        exit /b 1
     )
+    echo [OK] Build do backend concluido! Executavel: %BACKEND_DIR%\server.exe
     cd ..
 ) else (
-    echo [AVISO] Backend ainda nao possui package.json. Pulando build do backend.
+    echo [AVISO] Backend ainda nao possui go.mod. Pulando build do backend.
 )
 goto end
 
@@ -226,8 +227,9 @@ goto end
 
 :clean-backend
 echo [INFO] Limpando backend...
-if exist "%BACKEND_DIR%\node_modules" rmdir /s /q "%BACKEND_DIR%\node_modules"
-if exist "%BACKEND_DIR%\dist" rmdir /s /q "%BACKEND_DIR%\dist"
+if exist "%BACKEND_DIR%\server.exe" del /q "%BACKEND_DIR%\server.exe"
+if exist "%BACKEND_DIR%\server" del /q "%BACKEND_DIR%\server"
+if exist "%BACKEND_DIR%\*.exe" del /q "%BACKEND_DIR%\*.exe"
 echo [OK] Backend limpo
 goto end
 
@@ -240,8 +242,9 @@ goto end
 
 :version
 echo [INFO] Versoes:
-for /f "tokens=*" %%i in ('node --version') do echo   Node.js: %%i
-for /f "tokens=*" %%i in ('npm --version') do echo   npm: %%i
+for /f "tokens=*" %%i in ('node --version 2^>nul') do echo   Node.js: %%i
+for /f "tokens=*" %%i in ('npm --version 2^>nul') do echo   npm: %%i
+for /f "tokens=*" %%i in ('go version 2^>nul') do echo   Go: %%i
 goto end
 
 :info
@@ -263,20 +266,10 @@ if exist "%FRONTEND_DIR%\package.json" (
     )
     echo.
 )
-if exist "%BACKEND_DIR%\package.json" (
+if exist "%BACKEND_DIR%\go.mod" (
     echo Backend:
-    for /f "tokens=2 delims=:," %%a in ('findstr /c:"\"name\"" "%BACKEND_DIR%\package.json"') do (
-        set BACKEND_NAME=%%a
-        set BACKEND_NAME=!BACKEND_NAME:"=!
-        set BACKEND_NAME=!BACKEND_NAME: =!
-        echo   Nome: !BACKEND_NAME!
-    )
-    for /f "tokens=2 delims=:," %%a in ('findstr /c:"\"version\"" "%BACKEND_DIR%\package.json"') do (
-        set BACKEND_VER=%%a
-        set BACKEND_VER=!BACKEND_VER:"=!
-        set BACKEND_VER=!BACKEND_VER: =!
-        echo   Versao: !BACKEND_VER!
-    )
+    echo   Linguagem: Go
+    for /f "tokens=*" %%i in ('go version 2^>nul') do echo   Versao Go: %%i
     echo.
 )
 echo Scripts disponiveis no frontend:
@@ -329,4 +322,9 @@ goto end
 
 :end
 endlocal
+
+
+
+
+
 

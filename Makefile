@@ -30,13 +30,13 @@ install-frontend: ## Instala dependências do frontend
 	@cd $(FRONTEND_DIR) && $(NPM) install
 	@echo "$(GREEN)✓ Dependências do frontend instaladas$(NC)"
 
-install-backend: ## Instala dependências do backend (se existir package.json)
-	@if [ -f "$(BACKEND_DIR)/package.json" ]; then \
-		echo "$(YELLOW)Instalando dependências do backend...$(NC)"; \
-		cd $(BACKEND_DIR) && $(NPM) install; \
+install-backend: ## Instala dependências do backend (Go)
+	@if [ -f "$(BACKEND_DIR)/go.mod" ]; then \
+		echo "$(YELLOW)Instalando dependências do backend (Go)...$(NC)"; \
+		cd $(BACKEND_DIR) && go mod download; \
 		echo "$(GREEN)✓ Dependências do backend instaladas$(NC)"; \
 	else \
-		echo "$(YELLOW)⚠ Backend ainda não possui package.json. Pulando instalação do backend.$(NC)"; \
+		echo "$(YELLOW)⚠ Backend ainda não possui go.mod. Pulando instalação do backend.$(NC)"; \
 	fi
 
 check-node: ## Verifica se Node.js está instalado e na versão correta
@@ -54,12 +54,12 @@ dev-frontend: ## Inicia o servidor de desenvolvimento do frontend
 	@echo "$(YELLOW)Iniciando servidor de desenvolvimento do frontend...$(NC)"
 	@cd $(FRONTEND_DIR) && $(NPM) run dev
 
-dev-backend: ## Inicia o servidor de desenvolvimento do backend (se existir)
-	@if [ -f "$(BACKEND_DIR)/package.json" ]; then \
-		echo "$(YELLOW)Iniciando servidor de desenvolvimento do backend...$(NC)"; \
-		cd $(BACKEND_DIR) && $(NPM) run dev; \
+dev-backend: ## Inicia o servidor de desenvolvimento do backend (Go)
+	@if [ -f "$(BACKEND_DIR)/go.mod" ]; then \
+		echo "$(YELLOW)Iniciando servidor de desenvolvimento do backend (Go)...$(NC)"; \
+		cd $(BACKEND_DIR) && go run cmd/server/main.go; \
 	else \
-		echo "$(RED)✗ Backend ainda não possui package.json.$(NC)"; \
+		echo "$(RED)✗ Backend ainda não possui go.mod. Certifique-se de que o backend está configurado corretamente.$(NC)"; \
 	fi
 
 dev-all: dev-frontend dev-backend ## Inicia frontend e backend em paralelo (requer package.json no backend)
@@ -74,13 +74,13 @@ build-frontend: ## Cria o build de produção do frontend
 	@cd $(FRONTEND_DIR) && $(NPM) run build
 	@echo "$(GREEN)✓ Build do frontend concluído! Arquivos em $(FRONTEND_DIR)/dist$(NC)"
 
-build-backend: ## Cria o build de produção do backend (se existir)
-	@if [ -f "$(BACKEND_DIR)/package.json" ]; then \
-		echo "$(YELLOW)Gerando build de produção do backend...$(NC)"; \
-		cd $(BACKEND_DIR) && $(NPM) run build 2>/dev/null || echo "$(YELLOW)⚠ Script de build não encontrado no backend$(NC)"; \
-		echo "$(GREEN)✓ Build do backend concluído$(NC)"; \
+build-backend: ## Cria o build de produção do backend (Go)
+	@if [ -f "$(BACKEND_DIR)/go.mod" ]; then \
+		echo "$(YELLOW)Gerando build de produção do backend (Go)...$(NC)"; \
+		cd $(BACKEND_DIR) && go build -o server ./cmd/server; \
+		echo "$(GREEN)✓ Build do backend concluído! Executável: $(BACKEND_DIR)/server$(NC)"; \
 	else \
-		echo "$(YELLOW)⚠ Backend ainda não possui package.json. Pulando build do backend.$(NC)"; \
+		echo "$(YELLOW)⚠ Backend ainda não possui go.mod. Pulando build do backend.$(NC)"; \
 	fi
 
 preview: ## Preview do build de produção do frontend
@@ -113,10 +113,11 @@ clean-frontend: ## Remove node_modules e arquivos de build do frontend
 	@rm -rf $(FRONTEND_DIR)/.vite
 	@echo "$(GREEN)✓ Frontend limpo$(NC)"
 
-clean-backend: ## Remove node_modules e arquivos de build do backend
+clean-backend: ## Remove arquivos de build do backend (Go)
 	@echo "$(YELLOW)Limpando backend...$(NC)"
-	@rm -rf $(BACKEND_DIR)/node_modules
-	@rm -rf $(BACKEND_DIR)/dist
+	@rm -f $(BACKEND_DIR)/server
+	@rm -f $(BACKEND_DIR)/server.exe
+	@rm -f $(BACKEND_DIR)/*.exe
 	@echo "$(GREEN)✓ Backend limpo$(NC)"
 
 clean-cache: ## Limpa apenas o cache do Vite
@@ -134,10 +135,11 @@ help: ## Mostra esta mensagem de ajuda
 	@awk 'BEGIN {FS = ":.*##"; printf ""} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 	@echo ""
 
-version: ## Mostra a versão do Node.js e npm
+version: ## Mostra as versões do Node.js, npm e Go
 	@echo "$(YELLOW)Versões:$(NC)"
 	@echo "  Node.js: $$($(NODE) --version)"
 	@echo "  npm: $$($(NPM) --version)"
+	@which go > /dev/null 2>&1 && echo "  Go: $$(go version)" || echo "  Go: não instalado"
 
 info: ## Mostra informações do projeto
 	@echo "$(GREEN)=== Informações do Projeto ===$(NC)"
@@ -147,10 +149,10 @@ info: ## Mostra informações do projeto
 		echo "  Versão: $$(grep '"version"' $(FRONTEND_DIR)/package.json | cut -d'"' -f4)"; \
 		echo ""; \
 	fi
-	@if [ -f "$(BACKEND_DIR)/package.json" ]; then \
+	@if [ -f "$(BACKEND_DIR)/go.mod" ]; then \
 		echo "$(YELLOW)Backend:$(NC)"; \
-		echo "  Nome: $$(grep '"name"' $(BACKEND_DIR)/package.json | cut -d'"' -f4)"; \
-		echo "  Versão: $$(grep '"version"' $(BACKEND_DIR)/package.json | cut -d'"' -f4)"; \
+		echo "  Linguagem: Go"; \
+		which go > /dev/null 2>&1 && echo "  Versão Go: $$(go version)" || echo "  Go: não instalado"; \
 		echo ""; \
 	fi
 	@echo "$(YELLOW)Scripts disponíveis no frontend:$(NC)"
