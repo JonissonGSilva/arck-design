@@ -254,6 +254,15 @@ class ApiClient {
     return this.request<T>(endpoint, { ...config, method: 'DELETE' })
   }
 
+  // Upload simples com FormData
+  async upload<T>(endpoint: string, formData: FormData, config?: RequestConfig): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'POST',
+      body: formData,
+    })
+  }
+
   // Upload de arquivo com progresso
   async uploadFile<T>(
     endpoint: string,

@@ -9,7 +9,6 @@ import type {
   CreateProjectRequest,
   UpdateProjectRequest,
   ProjectFilters,
-  PaginatedResponse,
 } from '../types/api'
 
 interface UseProjectsState {

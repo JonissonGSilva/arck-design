@@ -15,7 +15,7 @@ import Explore from './pages/Explore'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Pricing from './pages/Pricing'
-import CreatorProfile from './pages/CreatorProfile'
+// CreatorProfile foi removido - usar PublicProfile com rota /portfolio/:username
 import ProjectView from './pages/ProjectView'
 import PublicProfile from './pages/PublicProfile'
 import Dashboard from './pages/dashboard/Dashboard'
@@ -49,7 +49,7 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/pricing" element={<Pricing />} />
-                    <Route path="/architect/:id" element={<CreatorProfile />} />
+                    {/* /architect/:id agora redireciona para /portfolio/:username */}
                     <Route path="/project/:id" element={<ProjectView />} />
                     <Route path="/portfolio/:username" element={<PublicProfile />} />
                   </Routes>

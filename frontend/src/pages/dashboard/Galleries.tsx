@@ -1,109 +1,64 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Plus, Search, MoreVertical, Eye, Download, 
   Share2, Lock, Unlock, FolderTree, ArrowLeft, Calendar,
   CheckCircle, Clock, AlertCircle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-
-interface Project {
-  id: string
-  title: string
-  coverImage: string
-  filesCount: number
-  views: number
-  status: 'public' | 'private' | 'password'
-  projectStatus: 'em-andamento' | 'aprovado' | 'concluido' | 'revisao'
-  createdAt: string
-  client: string
-  category: 'residencial' | 'comercial' | 'reforma' | 'interiores'
-}
+import { projectService } from '../../services'
+import { useToast } from '../../contexts/ToastContext'
+import type { Project } from '../../types/api'
 
 const Galleries = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total: 0,
+    totalFiles: 0,
+    totalViews: 0,
+    inProgress: 0,
+  })
 
-  const projects: Project[] = [
-    {
-      id: '1',
-      title: 'Residência Silva - Alto da Boa Vista',
-      coverImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop',
-      filesCount: 45,
-      views: 1240,
-      status: 'public',
-      projectStatus: 'aprovado',
-      createdAt: '2025-12-15',
-      client: 'Família Silva',
-      category: 'residencial',
-    },
-    {
-      id: '2',
-      title: 'Edifício Comercial Centro',
-      coverImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop',
-      filesCount: 32,
-      views: 892,
-      status: 'password',
-      projectStatus: 'em-andamento',
-      createdAt: '2025-12-10',
-      client: 'Construtora ABC',
-      category: 'comercial',
-    },
-    {
-      id: '3',
-      title: 'Design de Interiores - Apto 302',
-      coverImage: 'https://images.unsplash.com/photo-1600210492493-0946911123ea?w=400&h=300&fit=crop',
-      filesCount: 28,
-      views: 678,
-      status: 'private',
-      projectStatus: 'revisao',
-      createdAt: '2025-12-08',
-      client: 'João Santos',
-      category: 'interiores',
-    },
-    {
-      id: '4',
-      title: 'Reforma Residencial - Casa Jardins',
-      coverImage: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=400&h=300&fit=crop',
-      filesCount: 56,
-      views: 2156,
-      status: 'public',
-      projectStatus: 'concluido',
-      createdAt: '2025-12-05',
-      client: 'Amanda Oliveira',
-      category: 'reforma',
-    },
-    {
-      id: '5',
-      title: 'Consultório Médico - Dr. Carlos',
-      coverImage: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=400&h=300&fit=crop',
-      filesCount: 38,
-      views: 445,
-      status: 'password',
-      projectStatus: 'aprovado',
-      createdAt: '2025-12-01',
-      client: 'Dr. Carlos Rodrigues',
-      category: 'comercial',
-    },
-    {
-      id: '6',
-      title: 'Residência Moderna - Alphaville',
-      coverImage: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=400&h=300&fit=crop',
-      filesCount: 67,
-      views: 3890,
-      status: 'public',
-      projectStatus: 'em-andamento',
-      createdAt: '2025-11-28',
-      client: 'Tech Summit Corp',
-      category: 'residencial',
-    },
-  ]
+  // Carregar projetos
+  useEffect(() => {
+    const loadProjects = async () => {
+      setLoading(true)
+      
+      const response = await projectService.list({
+        search: searchTerm || undefined,
+        category: categoryFilter !== 'all' ? categoryFilter as 'residencial' | 'comercial' | 'reforma' | 'interiores' : undefined,
+        accessType: statusFilter !== 'all' ? statusFilter as 'public' | 'private' | 'password' : undefined,
+      })
+      
+      if (response.data) {
+        setProjects(response.data.data || [])
+        
+        // Calcular estatísticas
+        const projectsData = response.data.data || []
+        setStats({
+          total: projectsData.length,
+          totalFiles: projectsData.reduce((acc, p) => acc + (p.filesCount || 0), 0),
+          totalViews: projectsData.reduce((acc, p) => acc + (p.views || 0), 0),
+          inProgress: projectsData.filter(p => p.projectStatus === 'em-andamento').length,
+        })
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+      
+      setLoading(false)
+    }
+
+    loadProjects()
+  }, [searchTerm, statusFilter, categoryFilter])
 
   const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.client.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter
+    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || project.accessType === statusFilter
     const matchesCategory = categoryFilter === 'all' || project.category === categoryFilter
     return matchesSearch && matchesStatus && matchesCategory
   })
@@ -207,6 +162,41 @@ const Galleries = () => {
     }
   }
 
+  // Cover image fallback
+  const getCoverImage = (project: Project) => {
+    if (project.coverImage) {
+      return project.coverImage
+    }
+    // Placeholder baseado na categoria
+    const placeholders: Record<string, string> = {
+      residencial: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop',
+      comercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop',
+      reforma: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=400&h=300&fit=crop',
+      interiores: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400&h=300&fit=crop',
+    }
+    return placeholders[project.category] || placeholders.residencial
+  }
+
+  if (loading) {
+    return (
+      <div className="w-full space-y-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate('/architect/dashboard')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Meus Projetos</h1>
+            <p className="text-gray-600 mt-1 text-xs md:text-sm">Carregando...</p>
+          </div>
+        </div>
+        <div className="text-center py-20 text-gray-600">Carregando projetos...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full space-y-6 max-w-7xl mx-auto">
       {/* Header com botão voltar */}
@@ -274,24 +264,24 @@ const Galleries = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">{projects.length}</div>
+          <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">{stats.total}</div>
           <div className="text-sm text-gray-600">Total de Projetos</div>
         </div>
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-            {projects.reduce((acc, p) => acc + p.filesCount, 0).toLocaleString('pt-BR')}
+            {stats.totalFiles.toLocaleString('pt-BR')}
           </div>
           <div className="text-sm text-gray-600">Arquivos Totais</div>
         </div>
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-            {projects.reduce((acc, p) => acc + p.views, 0).toLocaleString('pt-BR')}
+            {stats.totalViews.toLocaleString('pt-BR')}
           </div>
           <div className="text-sm text-gray-600">Visualizações</div>
         </div>
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="text-2xl md:text-3xl font-bold text-primary-600 mb-1">
-            {projects.filter(p => p.projectStatus === 'em-andamento').length}
+            {stats.inProgress}
           </div>
           <div className="text-sm text-gray-600">Em Andamento</div>
         </div>
@@ -307,7 +297,7 @@ const Galleries = () => {
             {/* Cover Image */}
             <div className="relative aspect-video overflow-hidden">
               <img
-                src={project.coverImage}
+                src={getCoverImage(project)}
                 alt={project.title}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
@@ -315,14 +305,16 @@ const Galleries = () => {
               
               {/* Status Badges */}
               <div className="absolute top-3 left-3 flex flex-col gap-2">
-                <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                  {getStatusIcon(project.status)}
-                  {getStatusLabel(project.status)}
+                <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.accessType)}`}>
+                  {getStatusIcon(project.accessType)}
+                  {getStatusLabel(project.accessType)}
                 </span>
-                <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getProjectStatusColor(project.projectStatus)}`}>
-                  {getProjectStatusIcon(project.projectStatus)}
-                  {getProjectStatusLabel(project.projectStatus)}
-                </span>
+                {project.projectStatus && (
+                  <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getProjectStatusColor(project.projectStatus)}`}>
+                    {getProjectStatusIcon(project.projectStatus)}
+                    {getProjectStatusLabel(project.projectStatus)}
+                  </span>
+                )}
               </div>
 
               {/* Actions */}
@@ -348,25 +340,30 @@ const Galleries = () => {
               <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
                 {project.title}
               </h3>
-              <p className="text-sm text-gray-600 mb-4 flex items-center gap-1">
-                <span className="font-medium">Cliente:</span> {project.client}
-              </p>
+              {project.clientId && (
+                <p className="text-sm text-gray-600 mb-4 flex items-center gap-1">
+                  <span className="font-medium">Cliente vinculado</span>
+                </p>
+              )}
 
               {/* Stats */}
               <div className="flex items-center justify-between text-sm text-gray-600 mb-4 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-1">
                   <FolderTree className="h-4 w-4" />
-                  <span>{project.filesCount} arquivos</span>
+                  <span>{project.filesCount || 0} arquivos</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Eye className="h-4 w-4" />
-                  <span>{project.views}</span>
+                  <span>{project.views || 0}</span>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                <button className="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold">
+                <button 
+                  onClick={() => navigate(`/architect/projects/${project.id}`)}
+                  className="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
+                >
                   Abrir Projeto
                 </button>
                 <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" title="Compartilhar">

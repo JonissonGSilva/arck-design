@@ -1,145 +1,132 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, MapPin, Star, Building2, Filter, ChevronDown, ArrowLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-
-interface Architect {
-  id: string
-  name: string
-  location: string
-  specialty: string
-  rating: number
-  projects: number
-  avatar: string
-  coverImage: string
-  description: string
-  tags: string[]
-  price: string
-}
+import { exploreService } from '../services'
+import { useToast } from '../contexts/ToastContext'
+import type { PublicProfile } from '../types/api'
 
 const Explore = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('Todos')
-  const [selectedLocation, setSelectedLocation] = useState('Todas')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedLocation, setSelectedLocation] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-
-  const architects: Architect[] = [
-    {
-      id: '1',
-      name: 'Ana Silva',
-      location: 'São Paulo, SP',
-      specialty: 'Arquitetura Residencial',
-      rating: 4.9,
-      projects: 87,
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
-      coverImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=400&fit=crop',
-      description: 'Especialista em projetos residenciais modernos com mais de 10 anos de experiência',
-      tags: ['Residencial', 'Moderno', 'Sustentável'],
-      price: 'A partir de R$ 8.000',
-    },
-    {
-      id: '2',
-      name: 'Carlos Mendes',
-      location: 'Rio de Janeiro, RJ',
-      specialty: 'Design Comercial',
-      rating: 4.8,
-      projects: 62,
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      coverImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=400&fit=crop',
-      description: 'Projetos comerciais e corporativos que transformam espaços em experiências',
-      tags: ['Comercial', 'Corporativo', 'Minimalista'],
-      price: 'A partir de R$ 12.000',
-    },
-    {
-      id: '3',
-      name: 'Mariana Costa',
-      location: 'Belo Horizonte, MG',
-      specialty: 'Design de Interiores',
-      rating: 5.0,
-      projects: 124,
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-      coverImage: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=400&fit=crop',
-      description: 'Design de interiores que une funcionalidade e estética com identidade única',
-      tags: ['Interiores', 'Design', 'Personalizado'],
-      price: 'A partir de R$ 6.000',
-    },
-    {
-      id: '4',
-      name: 'Roberto Oliveira',
-      location: 'Curitiba, PR',
-      specialty: 'Arquitetura Sustentável',
-      rating: 4.9,
-      projects: 53,
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      coverImage: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&h=400&fit=crop',
-      description: 'Projetos sustentáveis com foco em eficiência energética e materiais ecológicos',
-      tags: ['Sustentável', 'Eco-friendly', 'LEED'],
-      price: 'A partir de R$ 10.000',
-    },
-    {
-      id: '5',
-      name: 'Juliana Santos',
-      location: 'Porto Alegre, RS',
-      specialty: 'Reforma e Retrofit',
-      rating: 4.7,
-      projects: 96,
-      avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&h=150&fit=crop&crop=face',
-      coverImage: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=800&h=400&fit=crop',
-      description: 'Especialista em reformas e retrofit, valorizando o patrimônio existente',
-      tags: ['Reforma', 'Retrofit', 'Restauração'],
-      price: 'A partir de R$ 7.000',
-    },
-    {
-      id: '6',
-      name: 'Pedro Almeida',
-      location: 'Brasília, DF',
-      specialty: 'Urbanismo',
-      rating: 4.8,
-      projects: 41,
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      coverImage: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=400&fit=crop',
-      description: 'Projetos urbanos e planejamento de espaços públicos',
-      tags: ['Urbanismo', 'Planejamento', 'Público'],
-      price: 'A partir de R$ 15.000',
-    },
-  ]
+  const [architects, setArchitects] = useState<PublicProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   const categories = [
-    'Todos',
-    'Residencial',
-    'Comercial',
-    'Interiores',
-    'Sustentável',
-    'Reforma',
-    'Urbanismo',
+    { value: '', label: 'Todas as Categorias' },
+    { value: 'residencial', label: 'Residencial' },
+    { value: 'comercial', label: 'Comercial' },
+    { value: 'interiores', label: 'Design de Interiores' },
+    { value: 'sustentavel', label: 'Arquitetura Sustentável' },
+    { value: 'reforma', label: 'Reforma' },
+    { value: 'urbanismo', label: 'Urbanismo' },
   ]
 
+  // Estados brasileiros
   const locations = [
-    'Todas',
-    'São Paulo, SP',
-    'Rio de Janeiro, RJ',
-    'Belo Horizonte, MG',
-    'Curitiba, PR',
-    'Porto Alegre, RS',
-    'Brasília, DF',
+    { value: '', label: 'Todas as Localizações' },
+    { value: 'SP', label: 'São Paulo' },
+    { value: 'RJ', label: 'Rio de Janeiro' },
+    { value: 'MG', label: 'Minas Gerais' },
+    { value: 'PR', label: 'Paraná' },
+    { value: 'RS', label: 'Rio Grande do Sul' },
+    { value: 'DF', label: 'Distrito Federal' },
   ]
 
-  const filteredArchitects = architects.filter((architect) => {
-    const matchesSearch =
-      architect.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      architect.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      architect.description.toLowerCase().includes(searchTerm.toLowerCase())
+  // Carregar arquitetos
+  useEffect(() => {
+    const loadArchitects = async () => {
+      setLoading(true)
+      
+      const response = await exploreService.searchArchitects({
+        search: searchTerm || undefined,
+        category: selectedCategory || undefined,
+        state: selectedLocation || undefined,
+      })
+      
+      if (response.data) {
+        setArchitects(response.data.data || [])
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+      
+      setLoading(false)
+    }
 
-    const matchesCategory =
-      selectedCategory === 'Todos' ||
-      architect.tags.some(tag => tag.toLowerCase().includes(selectedCategory.toLowerCase())) ||
-      architect.specialty.toLowerCase().includes(selectedCategory.toLowerCase())
+    // Debounce search
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
 
-    const matchesLocation =
-      selectedLocation === 'Todas' || architect.location === selectedLocation
+    const timeout = setTimeout(loadArchitects, 300)
+    setSearchTimeout(timeout)
 
-    return matchesSearch && matchesCategory && matchesLocation
-  })
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout)
+      }
+    }
+  }, [searchTerm, selectedCategory, selectedLocation])
+
+  // Formatar localização
+  const formatLocation = (profile: PublicProfile): string => {
+    if (!profile.location?.address) return 'Localização não informada'
+    const { city, state } = profile.location.address
+    if (city && state) return `${city}, ${state}`
+    if (city) return city
+    if (state) return state
+    return 'Localização não informada'
+  }
+
+  // Formatar rating
+  const formatRating = (profile: PublicProfile): string => {
+    if (!profile.ratings || profile.ratings.total === 0) return 'Novo'
+    return profile.ratings.average.toFixed(1)
+  }
+
+  // Avatar fallback
+  const renderAvatar = (profile: PublicProfile) => {
+    if (profile.avatar) {
+      return (
+        <img
+          src={profile.avatar}
+          alt={profile.displayName}
+          className="w-12 h-12 rounded-full border-2 border-gray-200"
+        />
+      )
+    }
+    return (
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold">
+        {profile.displayName.charAt(0).toUpperCase()}
+      </div>
+    )
+  }
+
+  // Cover image fallback
+  const getCoverImage = (profile: PublicProfile): string => {
+    if (profile.coverImage) return profile.coverImage
+    // Placeholder baseado na especialidade
+    const placeholders: Record<string, string> = {
+      residencial: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=400&fit=crop',
+      comercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=400&fit=crop',
+      interiores: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=400&fit=crop',
+      sustentavel: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&h=400&fit=crop',
+      reforma: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=800&h=400&fit=crop',
+      urbanismo: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&h=400&fit=crop',
+    }
+    
+    // Tentar encontrar placeholder baseado na especialidade
+    const specialty = profile.specialty?.toLowerCase() || ''
+    for (const [key, url] of Object.entries(placeholders)) {
+      if (specialty.includes(key)) return url
+    }
+    
+    return placeholders.residencial
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -199,8 +186,8 @@ const Explore = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                  <option key={category.value} value={category.value}>
+                    {category.label}
                   </option>
                 ))}
               </select>
@@ -216,8 +203,8 @@ const Explore = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {locations.map((location) => (
-                  <option key={location} value={location}>
-                    {location}
+                  <option key={location.value} value={location.value}>
+                    {location.label}
                   </option>
                 ))}
               </select>
@@ -228,86 +215,103 @@ const Explore = () => {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-600">
-            <span className="font-semibold text-gray-900">{filteredArchitects.length}</span>{' '}
-            {filteredArchitects.length === 1 ? 'arquiteto encontrado' : 'arquitetos encontrados'}
+            <span className="font-semibold text-gray-900">{architects.length}</span>{' '}
+            {architects.length === 1 ? 'arquiteto encontrado' : 'arquitetos encontrados'}
           </p>
         </div>
 
-        {/* Architects Grid */}
-        {filteredArchitects.length > 0 ? (
+        {/* Loading State */}
+        {loading ? (
+          <div className="text-center py-20 text-gray-600">
+            Carregando arquitetos...
+          </div>
+        ) : architects.length > 0 ? (
+          /* Architects Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArchitects.map((architect) => (
+            {architects.map((architect) => (
               <Link
                 key={architect.id}
-                to={`/architect/${architect.id}`}
+                to={`/portfolio/${architect.username}`}
                 className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 {/* Cover Image */}
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={architect.coverImage}
-                    alt={architect.name}
+                    src={getCoverImage(architect)}
+                    alt={architect.displayName}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
                   <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
                     <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    <span className="font-semibold text-sm">{architect.rating}</span>
+                    <span className="font-semibold text-sm">{formatRating(architect)}</span>
                   </div>
+                  {architect.boost?.active && (
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 rounded-full text-white text-xs font-semibold shadow-lg">
+                      ⭐ Destaque
+                    </div>
+                  )}
+                  {architect.verification?.verified && (
+                    <div className="absolute bottom-4 left-4 bg-green-500 px-2 py-1 rounded-full text-white text-xs font-semibold shadow-lg flex items-center gap-1">
+                      ✓ Verificado
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
                 <div className="p-6">
                   {/* Avatar and Name */}
                   <div className="flex items-center gap-3 mb-4">
-                    <img
-                      src={architect.avatar}
-                      alt={architect.name}
-                      className="w-12 h-12 rounded-full border-2 border-gray-200"
-                    />
+                    {renderAvatar(architect)}
                     <div>
                       <h3 className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
-                        {architect.name}
+                        {architect.displayName}
                       </h3>
                       <p className="text-sm text-gray-600 flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
-                        {architect.location}
+                        {formatLocation(architect)}
                       </p>
                     </div>
                   </div>
 
                   {/* Specialty */}
-                  <div className="mb-2">
-                    <span className="inline-flex items-center px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
-                      {architect.specialty}
-                    </span>
-                  </div>
+                  {architect.specialty && (
+                    <div className="mb-2">
+                      <span className="inline-flex items-center px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-medium">
+                        {architect.specialty}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Description */}
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {architect.description}
+                    {architect.bio || 'Sem descrição disponível'}
                   </p>
 
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {architect.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-primary-50 text-primary-700 rounded-full text-xs font-medium"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  {/* Specialties Tags */}
+                  {architect.specialties && architect.specialties.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {architect.specialties.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-1 text-gray-600 text-sm">
                       <Building2 className="h-4 w-4" />
-                      <span>{architect.projects} projetos</span>
+                      <span>{architect.projectsCount || 0} projetos</span>
                     </div>
-                    <span className="text-sm font-semibold text-primary-600">
-                      {architect.price}
-                    </span>
+                    {architect.experience && (
+                      <span className="text-sm font-medium text-primary-600">
+                        {architect.experience}
+                      </span>
+                    )}
                   </div>
                 </div>
               </Link>

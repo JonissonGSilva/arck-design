@@ -101,7 +101,7 @@ export const useImages = (): UseImagesReturn => {
             ),
           }))
         },
-        (fileIndex, response) => {
+        (_fileIndex, response) => {
           if (response.data) {
             setState(prev => ({
               ...prev,

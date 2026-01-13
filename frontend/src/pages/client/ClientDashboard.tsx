@@ -1,38 +1,86 @@
-import { FolderTree, Calendar, Building2, ArrowRight } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { FolderTree, Calendar, Building2, ArrowRight, Plus, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { dashboardService } from '../../services'
+import type { ClientStats, ClientProject, UpcomingEvent } from '../../services/dashboard.service'
 
 const ClientDashboard = () => {
-  const projects = [
-    {
-      id: '1',
-      title: 'Residência Silva - Projeto Completo',
-      architect: 'Ana Silva Arquitetura',
-      filesCount: 45,
-      lastUpdate: '15/12/2025',
-      coverImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&h=200&fit=crop',
-      status: 'em-andamento',
-    },
-    {
-      id: '2',
-      title: 'Reforma Apartamento Centro',
-      architect: 'Carlos Mendes',
-      filesCount: 28,
-      lastUpdate: '10/12/2025',
-      coverImage: 'https://images.unsplash.com/photo-1600210492493-0946911123ea?w=300&h=200&fit=crop',
-      status: 'aguardando-aprovacao',
-    },
-  ]
+  const [stats, setStats] = useState<ClientStats | null>(null)
+  const [projects, setProjects] = useState<ClientProject[]>([])
+  const [appointments, setAppointments] = useState<UpcomingEvent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const appointments = [
-    {
-      id: '1',
-      title: 'Apresentação de Projeto',
-      architect: 'Ana Silva Arquitetura',
-      date: '20 de Janeiro',
-      time: '14:00',
-      type: 'reuniao',
-    },
-  ]
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+
+  const loadDashboardData = async () => {
+    setIsLoading(true)
+    try {
+      const [statsRes, projectsRes, appointmentsRes] = await Promise.all([
+        dashboardService.getClientStats(),
+        dashboardService.getClientProjects(4),
+        dashboardService.getClientAppointments(3),
+      ])
+
+      if (statsRes.data) {
+        setStats(statsRes.data)
+      }
+      if (projectsRes.data) {
+        setProjects(projectsRes.data)
+      }
+      if (appointmentsRes.data) {
+        setAppointments(appointmentsRes.data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'em-andamento':
+        return 'Em Andamento'
+      case 'revisao':
+        return 'Em Revisão'
+      case 'aprovado':
+        return 'Aprovado'
+      case 'concluido':
+        return 'Concluído'
+      default:
+        return status
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'em-andamento':
+        return 'bg-blue-100 text-blue-700'
+      case 'revisao':
+        return 'bg-yellow-100 text-yellow-700'
+      case 'aprovado':
+        return 'bg-green-100 text-green-700'
+      case 'concluido':
+        return 'bg-gray-100 text-gray-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -48,7 +96,7 @@ const ClientDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Projetos Ativos</p>
-              <p className="text-3xl font-bold text-gray-900">{projects.length}</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.activeProjects || 0}</p>
             </div>
             <div className="p-3 bg-primary-50 rounded-lg">
               <FolderTree className="h-8 w-8 text-primary-600" />
@@ -60,7 +108,7 @@ const ClientDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Próximas Reuniões</p>
-              <p className="text-3xl font-bold text-gray-900">{appointments.length}</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.upcomingMeetings ?? 0}</p>
             </div>
             <div className="p-3 bg-accent-50 rounded-lg">
               <Calendar className="h-8 w-8 text-accent-600" />
@@ -72,7 +120,7 @@ const ClientDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Arquitetos Favoritos</p>
-              <p className="text-3xl font-bold text-gray-900">3</p>
+              <p className="text-3xl font-bold text-gray-900">{stats?.favoriteArchitects || 0}</p>
             </div>
             <div className="p-3 bg-green-50 rounded-lg">
               <Building2 className="h-8 w-8 text-green-600" />
@@ -94,37 +142,60 @@ const ClientDashboard = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {projects.map((project) => (
+        {projects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {projects.map((project) => (
+              <Link
+                key={project.id}
+                to={`/client/projects/${project.id}`}
+                className="group flex gap-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all hover:-translate-y-1"
+              >
+                {project.coverImage ? (
+                  <img
+                    src={project.coverImage}
+                    alt={project.title}
+                    className="w-24 h-24 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <FolderTree className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
+                    {project.title}
+                  </h3>
+                  {project.architectName && (
+                    <p className="text-sm text-gray-600 mb-2">Arquiteto: {project.architectName}</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Atualizado em {formatDate(project.updatedAt)}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusColor(project.status)}`}>
+                      {getStatusLabel(project.status)}
+                    </span>
+                    {project.progress > 0 && (
+                      <span className="text-xs text-gray-500">{project.progress}% concluído</span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <FolderTree className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-4">Você ainda não tem projetos</p>
             <Link
-              key={project.id}
-              to={`/client/projects/${project.id}`}
-              className="group flex gap-4 p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all hover:-translate-y-1"
+              to="/explore"
+              className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold"
             >
-              <img
-                src={project.coverImage}
-                alt={project.title}
-                className="w-24 h-24 rounded-lg object-cover"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
-                  {project.title}
-                </h3>
-                <p className="text-sm text-gray-600 mb-2">por {project.architect}</p>
-                <p className="text-xs text-gray-500">
-                  {project.filesCount} arquivos • Atualizado em {project.lastUpdate}
-                </p>
-                <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${
-                  project.status === 'em-andamento'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {project.status === 'em-andamento' ? 'Em Andamento' : 'Aguardando Aprovação'}
-                </span>
-              </div>
+              <Plus className="h-4 w-4" />
+              Encontrar um arquiteto
             </Link>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Upcoming Appointments */}
@@ -140,25 +211,34 @@ const ClientDashboard = () => {
           </Link>
         </div>
 
-        <div className="space-y-3">
-          {appointments.map((appointment) => (
-            <div
-              key={appointment.id}
-              className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <div className="p-3 bg-primary-50 rounded-lg">
-                <Calendar className="h-6 w-6 text-primary-600" />
+        {appointments.length > 0 ? (
+          <div className="space-y-3">
+            {appointments.map((appointment) => (
+              <div
+                key={appointment.id}
+                className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="p-3 bg-primary-50 rounded-lg">
+                  <Calendar className="h-6 w-6 text-primary-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">{appointment.title}</h3>
+                  {appointment.clientName && (
+                    <p className="text-sm text-gray-600 mb-1">com {appointment.clientName}</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    {formatDate(appointment.date)} às {appointment.time}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{appointment.title}</h3>
-                <p className="text-sm text-gray-600 mb-2">com {appointment.architect}</p>
-                <p className="text-xs text-gray-500">
-                  {appointment.date} às {appointment.time}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Nenhuma reunião agendada</p>
+          </div>
+        )}
       </div>
 
       {/* CTA */}

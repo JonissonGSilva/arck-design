@@ -33,6 +33,7 @@ export interface User {
   email: string
   name: string
   role: UserRole
+  type?: UserRole // Alias para role (compatibilidade)
   avatar?: string
   storageUsedPercent: number // Percentual de uso ao invés de valores exatos
   plan: 'free' | 'starter' | 'professional' | 'business'
@@ -99,6 +100,20 @@ export interface Project {
   filesCount: number
   createdAt: string
   updatedAt: string
+  // Campos para exibição com dados do arquiteto
+  architect?: {
+    id: string
+    name: string
+    username: string
+    avatar?: string
+    rating?: number
+    projectsCount?: number
+  }
+  client?: {
+    id: string
+    name: string
+    avatar?: string
+  }
 }
 
 export interface CreateProjectRequest {
@@ -143,8 +158,10 @@ export interface Image {
   userId: string
   cloudinaryId: string
   publicId: string
+  url: string // URL direta para exibição
   urls: ImageUrls
   filename: string
+  title?: string // Título alternativo para a imagem
   mimeType: string
   size: {
     original: number
@@ -330,6 +347,11 @@ export interface PublicProfile {
   email?: string
   phone?: string
   social?: SocialLinks
+  contact?: {
+    email?: string
+    phone?: string
+    website?: string
+  }
   verification?: {
     verified: boolean
     cauVerified: boolean
@@ -346,6 +368,8 @@ export interface PublicProfile {
     endDate?: string
     priority: number
   }
+  projectsCount?: number
+  viewsCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -430,8 +454,12 @@ export interface RecentProject {
   id: string
   title: string
   status: ProjectWorkStatus
-  progress: number
-  lastUpdate: string
+  progress?: number
+  lastUpdate?: string
+  coverImage?: string
+  filesCount?: number
+  views?: number
+  updatedAt?: string
 }
 
 export interface UpcomingEvent {
@@ -439,8 +467,9 @@ export interface UpcomingEvent {
   title: string
   date: string
   time: string
-  type: EventType
+  type: EventType | string
   clientName?: string
+  location?: EventLocation | string
 }
 
 // ============================================
