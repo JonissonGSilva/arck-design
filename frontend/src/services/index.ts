@@ -22,6 +22,9 @@ export { badgeService, BADGE_LEVEL_COLORS, BADGE_LEVEL_LABELS } from './badge.se
 export { compareService } from './compare.service'
 export { model3dService, MODEL_CATEGORIES } from './model3d.service'
 export { geolocationService } from './geolocation.service'
+export { settingsService } from './settings.service'
+export { servicesService } from './services.service'
+export type { Service, ServiceCategory, ServiceStats, CreateServiceRequest, UpdateServiceRequest, ServiceFilters } from './services.service'
 
 // Re-exportar tipos principais (apenas da API)
 export type * from '../types/api'

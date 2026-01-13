@@ -68,21 +68,24 @@ const Header = () => {
     navigate('/')
   }
 
+  // Verificar role ou type para compatibilidade
+  const userRole = user?.role || user?.type
+
   const getDashboardPath = () => {
-    if (user?.type === 'arquiteto') return '/architect/dashboard'
-    if (user?.type === 'cliente') return '/client/dashboard'
+    if (userRole === 'arquiteto') return '/architect/dashboard'
+    if (userRole === 'cliente') return '/client/dashboard'
     return '/'
   }
 
   const getProfilePath = () => {
-    if (user?.type === 'arquiteto') return '/architect/profile'
-    if (user?.type === 'cliente') return '/client/dashboard'
+    if (userRole === 'arquiteto') return '/architect/profile'
+    if (userRole === 'cliente') return '/client/dashboard'
     return '/'
   }
 
   const getSettingsPath = () => {
-    if (user?.type === 'arquiteto') return '/architect/settings'
-    if (user?.type === 'cliente') return '/client/settings'
+    if (userRole === 'arquiteto') return '/architect/settings'
+    if (userRole === 'cliente') return '/client/settings'
     return '/'
   }
 

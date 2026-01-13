@@ -17,6 +17,8 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import ErrorIcon from '@mui/icons-material/Error'
 import WarningIcon from '@mui/icons-material/Warning'
 import InfoIcon from '@mui/icons-material/Info'
+import ViewInArIcon from '@mui/icons-material/ViewInAr'
+import BarChartIcon from '@mui/icons-material/BarChart'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNotifications } from '../../contexts/NotificationContext'
 import arkLogo from '../../assets/ark-logo.png'
@@ -43,7 +45,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: '/architect/messages', icon: ChatIcon, label: 'Mensagens' },
     { path: '/architect/services', icon: WorkIcon, label: 'Serviços' },
     { path: '/architect/calendar', icon: CalendarTodayIcon, label: 'Agenda' },
-    { path: '/architect/models', icon: FolderIcon, label: 'Modelos 3D' },
+    { path: '/architect/models', icon: ViewInArIcon, label: 'Modelos 3D' },
+    { path: '/architect/analytics', icon: BarChartIcon, label: 'Estatísticas' },
+    { path: '/architect/settings', icon: SettingsIcon, label: 'Configurações' },
   ]
 
   const handleLogout = () => {
@@ -258,19 +262,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
           {/* Divider */}
           <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
-            <Link
-              to="/architect/settings"
-              onClick={() => setIsSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                isActive('/architect/settings')
-                  ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <SettingsIcon sx={{ fontSize: 20 }} />
-              <span>Configurações</span>
-            </Link>
-
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all text-sm"

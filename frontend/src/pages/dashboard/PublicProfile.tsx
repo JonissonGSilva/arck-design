@@ -99,19 +99,36 @@ const PublicProfile = () => {
           setCustomization(profile.customization)
         }
       } else {
-        // Perfil não existe, preencher com dados do usuário
+        // Perfil não existe (404) ou outro erro - preencher com dados do usuário para criação
         setProfileExists(false)
         if (user) {
           setFormData(prev => ({
             ...prev,
             displayName: user.name || '',
             email: user.email || '',
-            username: user.name?.toLowerCase().replace(/\s+/g, '') || '',
+            username: user.name?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9._]/g, '') || '',
           }))
+        }
+        
+        // Log para debug - perfil não encontrado é esperado para novos usuários
+        if (response.error?.includes('não encontrado') || response.error?.includes('not found')) {
+          console.log('[PublicProfile] Perfil ainda não criado - mostrando formulário de criação')
+        } else if (response.error) {
+          console.error('[PublicProfile] Erro ao carregar perfil:', response.error)
         }
       }
     } catch (error) {
       console.error('Erro ao carregar perfil:', error)
+      // Em caso de erro de rede, ainda permitir criar perfil
+      setProfileExists(false)
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          displayName: user.name || '',
+          email: user.email || '',
+          username: user.name?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9._]/g, '') || '',
+        }))
+      }
     } finally {
       setIsLoading(false)
     }

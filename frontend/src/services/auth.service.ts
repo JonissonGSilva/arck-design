@@ -23,13 +23,21 @@ const USER_STORAGE_KEY = 'arckdesign_user'
 // ============================================
 
 const saveUser = (user: User): void => {
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+  // Garantir que type seja sempre igual a role para compatibilidade
+  const userWithType = {
+    ...user,
+    type: user.role || user.type,
+  }
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userWithType))
 }
 
 const getStoredUser = (): User | null => {
   try {
     const stored = localStorage.getItem(USER_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : null
+    if (!stored) return null
+    const user = JSON.parse(stored)
+    // Garantir que type seja sempre igual a role para compatibilidade
+    return { ...user, type: user.role || user.type }
   } catch {
     localStorage.removeItem(USER_STORAGE_KEY)
     return null

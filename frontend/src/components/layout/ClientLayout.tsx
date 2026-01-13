@@ -26,6 +26,7 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
     { path: '/client/favorites', icon: Heart, label: 'Favoritos' },
     { path: '/client/messages', icon: MessageSquare, label: 'Mensagens' },
     { path: '/client/bookings', icon: Calendar, label: 'Agendamentos' },
+    { path: '/client/settings', icon: Settings, label: 'Configurações' },
   ]
 
   const handleLogout = () => {
@@ -105,14 +106,7 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
         </nav>
 
         {/* Bottom Actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 space-y-1">
-          <Link
-            to="/client/settings"
-            className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-          >
-            <Settings className="h-5 w-5" />
-            <span>Configurações</span>
-          </Link>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

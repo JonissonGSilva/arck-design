@@ -1,41 +1,224 @@
-import { useState } from 'react'
-import { ArrowLeft, User, Building2, Bell, Lock, CreditCard, Globe, Save } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowLeft, User, Building2, Bell, Lock, CreditCard, Globe, Save, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useToast } from '../../contexts/ToastContext'
+import { useAuth } from '../../contexts/AuthContext'
+import { settingsService, type NotificationSettings, type Preferences, type PrivacySettings, type UserProfile } from '../../services/settings.service'
 
 const Settings = () => {
   const navigate = useNavigate()
   const { isDarkMode, setDarkMode } = useTheme()
   const { showToast } = useToast()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('profile')
-  const [settings, setSettings] = useState({
-    // Profile
-    name: 'Carlos Mendes',
-    email: 'carlos@arckdesign.com',
-    phone: '(11) 98765-4321',
-    bio: 'Arquiteto especializado em projetos residenciais',
-    
-    // Company
-    companyName: 'Carlos Mendes Arquitetura',
-    cnpj: '12.345.678/0001-90',
-    address: 'Av. Paulista, 1000 - São Paulo, SP',
-    website: 'www.carlosmendes.arq.br',
-    
-    // Notifications
-    emailNotifications: true,
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  
+  // Profile data
+  const [profile, setProfile] = useState<UserProfile>({
+    id: '',
+    name: '',
+    email: '',
+    phone: '',
+    bio: '',
+    avatar: '',
+    companyName: '',
+    cnpj: '',
+    address: '',
+    website: '',
+  })
+
+  // Notification settings
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    email: true,
     projectUpdates: true,
     clientMessages: true,
     marketingEmails: false,
-    
-    // Appearance
+  })
+
+  // Preferences
+  const [preferences, setPreferences] = useState<Preferences>({
     language: 'pt-BR',
-    
-    // Privacy
+    theme: isDarkMode ? 'dark' : 'light',
+  })
+
+  // Privacy (usado na aba de preferências)
+  const [, setPrivacy] = useState<PrivacySettings>({
     profileVisibility: 'public',
     showEmail: false,
     showPhone: true,
   })
+
+  // Password change
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+
+  // Load initial data
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // Load settings
+        const settingsResponse = await settingsService.getSettings()
+        if (settingsResponse.data) {
+          setNotifications(settingsResponse.data.notifications)
+          setPreferences(settingsResponse.data.preferences)
+          setPrivacy(settingsResponse.data.privacy)
+          // Sync dark mode with saved preference
+          if (settingsResponse.data.preferences.theme) {
+            setDarkMode(settingsResponse.data.preferences.theme === 'dark')
+          }
+        }
+
+        // Load profile
+        const profileResponse = await settingsService.getProfile()
+        if (profileResponse.data) {
+          setProfile(profileResponse.data)
+        } else if (user) {
+          // Fallback to auth user data
+          setProfile({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: '',
+            bio: '',
+            avatar: user.avatar || '',
+            companyName: '',
+            cnpj: '',
+            address: '',
+            website: '',
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error)
+        // Use auth data as fallback
+        if (user) {
+          setProfile({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: '',
+            bio: '',
+            avatar: user.avatar || '',
+            companyName: '',
+            cnpj: '',
+            address: '',
+            website: '',
+          })
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [user, setDarkMode])
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true)
+    try {
+      const response = await settingsService.updateProfile(profile)
+      if (response.data) {
+        showToast('Perfil atualizado com sucesso!', 'success')
+      } else {
+        showToast(response.error || 'Erro ao atualizar perfil', 'error')
+      }
+    } catch (error) {
+      showToast('Erro ao salvar alterações', 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveNotifications = async () => {
+    setIsSaving(true)
+    try {
+      const response = await settingsService.updateNotifications(notifications)
+      if (response.data) {
+        showToast('Notificações atualizadas com sucesso!', 'success')
+      } else {
+        showToast(response.error || 'Erro ao atualizar notificações', 'error')
+      }
+    } catch (error) {
+      showToast('Erro ao salvar alterações', 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSavePreferences = async () => {
+    setIsSaving(true)
+    try {
+      const updatedPreferences: Preferences = {
+        ...preferences,
+        theme: isDarkMode ? 'dark' : 'light',
+      }
+      const response = await settingsService.updatePreferences(updatedPreferences)
+      if (response.data) {
+        showToast('Preferências atualizadas com sucesso!', 'success')
+      } else {
+        showToast(response.error || 'Erro ao atualizar preferências', 'error')
+      }
+    } catch (error) {
+      showToast('Erro ao salvar alterações', 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      showToast('As senhas não coincidem', 'error')
+      return
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      showToast('A senha deve ter pelo menos 8 caracteres', 'error')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const response = await settingsService.changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      )
+      if (response.data) {
+        showToast('Senha alterada com sucesso!', 'success')
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      } else {
+        showToast(response.error || 'Erro ao alterar senha', 'error')
+      }
+    } catch (error) {
+      showToast('Erro ao alterar senha', 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSave = () => {
+    switch (activeTab) {
+      case 'profile':
+      case 'company':
+        handleSaveProfile()
+        break
+      case 'notifications':
+        handleSaveNotifications()
+        break
+      case 'preferences':
+        handleSavePreferences()
+        break
+      case 'security':
+        handleChangePassword()
+        break
+      default:
+        showToast('Configurações salvas!', 'success')
+    }
+  }
 
   const tabs = [
     { id: 'profile', label: 'Perfil', icon: User },
@@ -46,10 +229,15 @@ const Settings = () => {
     { id: 'preferences', label: 'Preferências', icon: Globe },
   ]
 
-  const handleSave = () => {
-    // Aqui você salvaria no backend
-    // O dark mode já é salvo automaticamente no localStorage via ThemeContext
-    showToast('Configurações salvas com sucesso!', 'success')
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-gray-600">Carregando configurações...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -57,21 +245,21 @@ const Settings = () => {
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/architect/dashboard')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          onClick={() => navigate(-1)}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
         >
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
+          <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
         </button>
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Configurações</h1>
-          <p className="text-gray-600 mt-1 text-xs md:text-sm">Gerencie suas preferências e informações</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Configurações</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1 text-xs md:text-sm">Gerencie suas preferências e informações</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Tabs */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl border border-gray-200 p-2">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-2">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -80,8 +268,8 @@ const Settings = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                     activeTab === tab.id
-                      ? 'bg-primary-50 text-primary-700 font-semibold'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-semibold'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -93,58 +281,58 @@ const Settings = () => {
         </div>
 
         {/* Content */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 p-6">
+        <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           {activeTab === 'profile' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Informações do Perfil</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Informações do Perfil</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nome completo
                   </label>
                   <input
                     type="text"
-                    value={settings.name}
-                    onChange={(e) => setSettings({...settings, name: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.name}
+                    onChange={(e) => setProfile({...profile, name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Email
                   </label>
                   <input
                     type="email"
-                    value={settings.email}
-                    onChange={(e) => setSettings({...settings, email: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.email}
+                    onChange={(e) => setProfile({...profile, email: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Telefone
                   </label>
                   <input
                     type="tel"
-                    value={settings.phone}
-                    onChange={(e) => setSettings({...settings, phone: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.phone || ''}
+                    onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Bio
                 </label>
                 <textarea
-                  value={settings.bio}
-                  onChange={(e) => setSettings({...settings, bio: e.target.value})}
+                  value={profile.bio || ''}
+                  onChange={(e) => setProfile({...profile, bio: e.target.value})}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
@@ -152,54 +340,54 @@ const Settings = () => {
 
           {activeTab === 'company' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Informações da Empresa</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Informações da Empresa</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nome da Empresa
                   </label>
                   <input
                     type="text"
-                    value={settings.companyName}
-                    onChange={(e) => setSettings({...settings, companyName: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.companyName || ''}
+                    onChange={(e) => setProfile({...profile, companyName: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     CNPJ
                   </label>
                   <input
                     type="text"
-                    value={settings.cnpj}
-                    onChange={(e) => setSettings({...settings, cnpj: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.cnpj || ''}
+                    onChange={(e) => setProfile({...profile, cnpj: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Endereço
                   </label>
                   <input
                     type="text"
-                    value={settings.address}
-                    onChange={(e) => setSettings({...settings, address: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.address || ''}
+                    onChange={(e) => setProfile({...profile, address: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Website
                   </label>
                   <input
                     type="url"
-                    value={settings.website}
-                    onChange={(e) => setSettings({...settings, website: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={profile.website || ''}
+                    onChange={(e) => setProfile({...profile, website: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -208,70 +396,70 @@ const Settings = () => {
 
           {activeTab === 'notifications' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Notificações</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notificações</h2>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <p className="font-medium text-gray-900">Notificações por Email</p>
-                    <p className="text-sm text-gray-600">Receba atualizações por email</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Notificações por Email</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Receba atualizações por email</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.emailNotifications}
-                      onChange={(e) => setSettings({...settings, emailNotifications: e.target.checked})}
+                      checked={notifications.email}
+                      onChange={(e) => setNotifications({...notifications, email: e.target.checked})}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
 
-                <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <p className="font-medium text-gray-900">Atualizações de Projeto</p>
-                    <p className="text-sm text-gray-600">Quando houver mudanças nos projetos</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Atualizações de Projeto</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Quando houver mudanças nos projetos</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.projectUpdates}
-                      onChange={(e) => setSettings({...settings, projectUpdates: e.target.checked})}
+                      checked={notifications.projectUpdates}
+                      onChange={(e) => setNotifications({...notifications, projectUpdates: e.target.checked})}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
 
-                <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <p className="font-medium text-gray-900">Mensagens de Clientes</p>
-                    <p className="text-sm text-gray-600">Novas mensagens dos clientes</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Mensagens de Clientes</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Novas mensagens dos clientes</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.clientMessages}
-                      onChange={(e) => setSettings({...settings, clientMessages: e.target.checked})}
+                      checked={notifications.clientMessages}
+                      onChange={(e) => setNotifications({...notifications, clientMessages: e.target.checked})}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
 
                 <div className="flex items-center justify-between py-3">
                   <div>
-                    <p className="font-medium text-gray-900">Emails de Marketing</p>
-                    <p className="text-sm text-gray-600">Novidades e promoções</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Emails de Marketing</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Novidades e promoções</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.marketingEmails}
-                      onChange={(e) => setSettings({...settings, marketingEmails: e.target.checked})}
+                      checked={notifications.marketingEmails}
+                      onChange={(e) => setNotifications({...notifications, marketingEmails: e.target.checked})}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
               </div>
@@ -280,53 +468,55 @@ const Settings = () => {
 
           {activeTab === 'security' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Segurança</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Segurança</h2>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Senha Atual
                   </label>
                   <input
                     type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nova Senha
                   </label>
                   <input
                     type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Confirmar Nova Senha
                   </label>
                   <input
                     type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
-
-                <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                  Atualizar Senha
-                </button>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-4">Autenticação de Dois Fatores</h3>
-                <p className="text-sm text-gray-600 mb-4">
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Autenticação de Dois Fatores</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   Adicione uma camada extra de segurança à sua conta
                 </p>
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   Ativar 2FA
                 </button>
               </div>
@@ -335,14 +525,21 @@ const Settings = () => {
 
           {activeTab === 'billing' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Plano e Pagamento</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Plano e Pagamento</h2>
               
-              <div className="bg-gradient-to-br from-primary-50 to-accent-50 p-6 rounded-xl border border-primary-200">
+              <div className="bg-gradient-to-br from-primary-50 to-accent-50 dark:from-primary-900/30 dark:to-accent-900/30 p-6 rounded-xl border border-primary-200 dark:border-primary-700">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Plano Atual</p>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900">Escritório</h3>
-                    <p className="text-gray-600 mt-1">R$ 399/mês</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Plano Atual</p>
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white capitalize">
+                      {user?.plan || 'Free'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                      {user?.plan === 'free' ? 'Gratuito' : 
+                       user?.plan === 'starter' ? 'R$ 49/mês' :
+                       user?.plan === 'professional' ? 'R$ 149/mês' :
+                       user?.plan === 'business' ? 'R$ 399/mês' : 'Gratuito'}
+                    </p>
                   </div>
                   <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
                     Fazer Upgrade
@@ -351,35 +548,14 @@ const Settings = () => {
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Método de Pagamento</h3>
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="h-8 w-8 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">•••• •••• •••• 4242</p>
-                        <p className="text-sm text-gray-600">Expira em 12/2025</p>
-                      </div>
-                    </div>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      Editar
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Histórico de Pagamentos</h3>
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center justify-between py-3 border-b border-gray-200">
-                      <div>
-                        <p className="font-medium text-gray-900">R$ 399,00</p>
-                        <p className="text-sm text-gray-600">15/12/2025</p>
-                      </div>
-                      <span className="text-green-600 text-sm font-medium">Pago</span>
-                    </div>
-                  ))}
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Método de Pagamento</h3>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Nenhum método de pagamento cadastrado
+                  </p>
+                  <button className="mt-3 text-primary-600 hover:text-primary-700 text-sm font-medium">
+                    Adicionar cartão
+                  </button>
                 </div>
               </div>
             </div>
@@ -387,13 +563,13 @@ const Settings = () => {
 
           {activeTab === 'preferences' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900">Preferências</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Preferências</h2>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <p className="font-medium text-gray-900">Modo Escuro</p>
-                    <p className="text-sm text-gray-600">Ativar tema escuro (salva automaticamente)</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Modo Escuro</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Ativar tema escuro</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -402,18 +578,18 @@ const Settings = () => {
                       onChange={(e) => setDarkMode(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
 
                 <div className="py-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Idioma
                   </label>
                   <select
-                    value={settings.language}
-                    onChange={(e) => setSettings({...settings, language: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    value={preferences.language}
+                    onChange={(e) => setPreferences({...preferences, language: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="pt-BR">Português (Brasil)</option>
                     <option value="en-US">English (US)</option>
@@ -425,13 +601,18 @@ const Settings = () => {
           )}
 
           {/* Save Button */}
-          <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end">
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+              disabled={isSaving}
+              className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="h-5 w-5" />
-              Salvar Alterações
+              {isSaving ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Save className="h-5 w-5" />
+              )}
+              {isSaving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
         </div>
@@ -441,4 +622,3 @@ const Settings = () => {
 }
 
 export default Settings
-

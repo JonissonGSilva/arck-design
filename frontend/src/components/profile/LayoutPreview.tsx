@@ -374,3 +374,4 @@ const LayoutPreview = ({ profile, customization }: LayoutPreviewProps) => {
 
 export default LayoutPreview
 
+
