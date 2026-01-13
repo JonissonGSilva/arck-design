@@ -25,6 +25,7 @@ import Chat from './pages/dashboard/Chat'
 import Services from './pages/dashboard/Services'
 import Settings from './pages/dashboard/Settings'
 import Calendar from './pages/dashboard/Calendar'
+import Models3D from './pages/dashboard/Models3D'
 import ClientDashboard from './pages/client/ClientDashboard'
 
 function App() {
@@ -72,6 +73,7 @@ function App() {
                     <Route path="/messages" element={<Chat />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/models" element={<Models3D />} />
                     <Route path="/settings" element={<Settings />} />
                   </Routes>
                 </DashboardLayout>

@@ -15,6 +15,13 @@ export { profileService, LAYOUT_OPTIONS, GRID_COLUMN_OPTIONS, HERO_STYLE_OPTIONS
 export { exploreService } from './explore.service'
 export { calendarService } from './calendar.service'
 export { favoritesService } from './favorites.service'
+export { questionService, QUESTION_CATEGORIES } from './question.service'
+export { blogService, BLOG_CATEGORIES } from './blog.service'
+export { analyticsService } from './analytics.service'
+export { badgeService, BADGE_LEVEL_COLORS, BADGE_LEVEL_LABELS } from './badge.service'
+export { compareService } from './compare.service'
+export { model3dService, MODEL_CATEGORIES } from './model3d.service'
+export { geolocationService } from './geolocation.service'
 
 // Re-exportar tipos principais (apenas da API)
 export type * from '../types/api'

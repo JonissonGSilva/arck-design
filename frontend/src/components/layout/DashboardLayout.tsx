@@ -43,6 +43,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: '/architect/messages', icon: ChatIcon, label: 'Mensagens' },
     { path: '/architect/services', icon: WorkIcon, label: 'Serviços' },
     { path: '/architect/calendar', icon: CalendarTodayIcon, label: 'Agenda' },
+    { path: '/architect/models', icon: FolderIcon, label: 'Modelos 3D' },
   ]
 
   const handleLogout = () => {
