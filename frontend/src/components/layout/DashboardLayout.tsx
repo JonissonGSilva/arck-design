@@ -208,11 +208,17 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               to="/architect/profile" 
               className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <img
-                src={user?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'}
-                alt="Profile"
-                className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-gray-200"
-              />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt="Profile"
+                  className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-gray-200 object-cover"
+                />
+              ) : (
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-gray-200 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-xs font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
               <span className="hidden lg:block text-xs md:text-sm font-medium text-gray-700 max-w-[120px] truncate">
                 {user?.name}
               </span>

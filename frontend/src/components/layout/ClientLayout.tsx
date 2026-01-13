@@ -58,11 +58,17 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
             <Link to="/client/dashboard" className="flex items-center gap-3">
-              <img
-                src={user?.avatar || 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face'}
-                alt="Profile"
-                className="w-8 h-8 rounded-full"
-              />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center text-white text-sm font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
               <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name}</span>
             </Link>
           </div>
