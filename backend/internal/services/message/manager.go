@@ -7,6 +7,7 @@ import (
 
 	"arck-design/backend/internal/database"
 	"arck-design/backend/internal/models"
+	"arck-design/backend/internal/services/websocket"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -237,6 +238,15 @@ func SendMessage(ctx context.Context, senderID, receiverID, text string, attachm
 		return nil, err
 	}
 
+	// Enviar notificação via WebSocket
+	websocket.SendNewMessageNotification(receiverID, map[string]interface{}{
+		"messageId":      message.ID.Hex(),
+		"conversationId": conversation.ID.Hex(),
+		"senderId":       senderID,
+		"text":           text,
+		"createdAt":      now,
+	})
+
 	return &message, nil
 }
 
@@ -345,7 +355,20 @@ func MarkAsRead(ctx context.Context, conversationID, userID string) error {
 	}
 
 	_, err = database.ConversationsCollection.UpdateByID(ctx, cid, convUpdate)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Notificar o remetente que as mensagens foram lidas
+	// Encontrar o outro participante da conversa
+	for _, participant := range conversation.Participants {
+		if participant != uid {
+			websocket.SendMessageReadNotification(participant.Hex(), conversationID)
+			break
+		}
+	}
+
+	return nil
 }
 
 // DeleteMessage deleta uma mensagem (soft delete ou hard delete)
