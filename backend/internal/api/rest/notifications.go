@@ -198,3 +198,4 @@ func updateNotificationPreferences(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Preferências atualizadas com sucesso"})
 }
 
+

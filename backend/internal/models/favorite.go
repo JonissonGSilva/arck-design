@@ -13,3 +13,4 @@ type Favorite struct {
 	CreatedAt   time.Time          `bson:"createdAt" json:"createdAt"`
 }
 
+

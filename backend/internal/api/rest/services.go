@@ -310,3 +310,4 @@ func getPublicArchitectServices(c *gin.Context) {
 	c.JSON(http.StatusOK, services)
 }
 
+

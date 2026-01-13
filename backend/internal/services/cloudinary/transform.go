@@ -24,3 +24,4 @@ func GetOriginalURL(publicID string) string {
 	return GetImageURL(publicID, TransformationOriginal)
 }
 
+

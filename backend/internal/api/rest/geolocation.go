@@ -247,3 +247,4 @@ func calculateDistance(c *gin.Context) {
 	})
 }
 
+

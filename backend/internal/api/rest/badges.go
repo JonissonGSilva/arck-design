@@ -296,3 +296,4 @@ func getUserBadgesPublic(c *gin.Context) {
 // Temporariamente não usado, mas necessário para compatibilidade
 var _ = strconv.Itoa
 
+

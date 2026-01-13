@@ -477,3 +477,4 @@ func InitializeBadgeDefinitions(ctx context.Context) error {
 	return err
 }
 
+

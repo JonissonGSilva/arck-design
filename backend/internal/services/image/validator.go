@@ -31,3 +31,4 @@ func ValidateDimensions(width, height int) error {
 	return nil
 }
 
+

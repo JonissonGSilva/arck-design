@@ -278,3 +278,4 @@ func GetDefaultBadgeDefinitions() []BadgeDefinition {
 	}
 }
 
+

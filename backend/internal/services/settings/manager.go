@@ -336,3 +336,4 @@ func DeleteAccount(ctx context.Context, userID, password string) error {
 	return nil
 }
 
+

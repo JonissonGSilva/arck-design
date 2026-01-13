@@ -371,3 +371,4 @@ func getUpcomingEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, events)
 }
 
+

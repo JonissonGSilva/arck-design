@@ -111,3 +111,4 @@ func SendConversationCreated(userID string, conversation interface{}) {
 	GlobalHub.SendToUser(userID, MessageTypeConversationNew, conversation)
 }
 
+

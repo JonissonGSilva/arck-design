@@ -312,3 +312,4 @@ func getDefaultPreferences(userID primitive.ObjectID) *models.NotificationPrefer
 	return prefs
 }
 
+

@@ -60,3 +60,4 @@ type Event struct {
 	UpdatedAt      time.Time           `bson:"updatedAt" json:"updatedAt"`
 }
 
+

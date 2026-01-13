@@ -159,3 +159,4 @@ func getClientAppointments(c *gin.Context) {
 	c.JSON(http.StatusOK, appointments)
 }
 
+
