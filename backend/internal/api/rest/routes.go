@@ -66,6 +66,21 @@ func SetupRouter() *gin.Engine {
 				images.POST("/:id/reprocess", reprocessImage)
 			}
 
+			// 3D Models
+			models3d := protected.Group("/models3d")
+			{
+				models3d.POST("/upload", uploadModel3D)
+				models3d.GET("", listModels3D)
+				models3d.GET("/stats", getModel3DStats)
+				models3d.GET("/formats", getSupportedFormats)
+				models3d.GET("/:id", getModel3D)
+				models3d.PUT("/:id", updateModel3D)
+				models3d.DELETE("/:id", deleteModel3D)
+				models3d.GET("/:id/download", downloadModel3D)
+				models3d.POST("/:id/retry", retryModel3DProcessing)
+				models3d.GET("/project/:projectId", getModel3DsByProject)
+			}
+
 			// Messages
 			messages := protected.Group("/messages")
 			{
@@ -112,6 +127,7 @@ func SetupRouter() *gin.Engine {
 				profileGroup.POST("/avatar", uploadProfileAvatar)
 				profileGroup.POST("/cover", uploadProfileCover)
 				profileGroup.GET("/check-username", checkUsernameAvailable)
+				profileGroup.PUT("/location", updateMyLocation)
 				// Verificação
 				profileGroup.GET("/verification/status", getVerificationStatus)
 				profileGroup.POST("/verification/upload", uploadVerificationDocument)
@@ -182,6 +198,51 @@ func SetupRouter() *gin.Engine {
 				reviews.POST("/:id/helpful", markReviewHelpful)
 			}
 
+			// Questions (perguntas ao especialista)
+			questions := protected.Group("/questions")
+			{
+				questions.GET("", listQuestions)
+				questions.POST("", createQuestion)
+				questions.GET("/stats", getQuestionStats)
+				questions.GET("/popular", getPopularQuestions)
+				questions.GET("/:id", getQuestionByID)
+				questions.PUT("/:id", updateQuestion)
+				questions.DELETE("/:id", deleteQuestion)
+				questions.PUT("/:id/close", closeQuestion)
+				questions.POST("/:id/answers", addAnswer)
+				questions.PUT("/:id/answers/:answerId/best", markBestAnswer)
+				questions.POST("/:id/answers/:answerId/helpful", markAnswerHelpful)
+			}
+
+			// Blog (authenticated - create/update/delete)
+			blogAuth := protected.Group("/blog")
+			{
+				blogAuth.POST("/posts", createBlogPost)
+				blogAuth.PUT("/posts/:id", updateBlogPost)
+				blogAuth.DELETE("/posts/:id", deleteBlogPost)
+				blogAuth.POST("/posts/:id/like", likeBlogPost)
+				blogAuth.DELETE("/posts/:id/like", unlikeBlogPost)
+				blogAuth.GET("/posts/my", getMyBlogPosts)
+				blogAuth.GET("/stats", getBlogStats)
+			}
+
+			// Analytics (authenticated)
+			analyticsGroup := protected.Group("/analytics")
+			{
+				analyticsGroup.GET("/overview", getAnalyticsOverview)
+				analyticsGroup.GET("/comparison", getAnalyticsComparison)
+				analyticsGroup.GET("/projects/:id", getProjectAnalytics)
+			}
+
+			// Badges (authenticated)
+			badgesGroup := protected.Group("/badges")
+			{
+				badgesGroup.GET("/my", getMyBadges)
+				badgesGroup.GET("/my/summary", getMyBadgeSummary)
+				badgesGroup.POST("/check", checkAndAwardBadges)
+				badgesGroup.PUT("/:id/display", updateBadgeDisplay)
+			}
+
 			// Admin routes (TODO: adicionar middleware de verificação de admin)
 			admin := protected.Group("/admin")
 			{
@@ -192,6 +253,14 @@ func SetupRouter() *gin.Engine {
 					verifications.GET("/:id", getVerificationDetails)
 					verifications.POST("/:id/approve", approveVerification)
 					verifications.POST("/:id/reject", rejectVerification)
+				}
+
+				// Badges admin
+				adminBadges := admin.Group("/badges")
+				{
+					adminBadges.POST("/initialize", initializeBadges)
+					adminBadges.POST("/award", awardBadgeToUser)
+					adminBadges.DELETE("/:id", revokeBadgeFromUser)
 				}
 			}
 		}
@@ -205,6 +274,27 @@ func SetupRouter() *gin.Engine {
 			// Public architect reviews
 			public.GET("/architects/:architectId/reviews", getArchitectReviews)
 			public.GET("/architects/:architectId/rating", getArchitectRatingStats)
+
+			// Public badges
+			public.GET("/badges", getAllBadges)
+			public.GET("/badges/:id", getBadgeByID)
+			public.GET("/users/:userId/badges", getUserBadgesPublic)
+
+			// Public questions routes
+			public.GET("/questions", listQuestions)
+			public.GET("/questions/popular", getPopularQuestions)
+			public.GET("/questions/:id", getQuestionByID)
+			public.GET("/questions/architect/:architectId", getQuestionsByArchitect)
+
+			// Public blog routes
+			public.GET("/blog/posts", listBlogPosts)
+			public.GET("/blog/posts/featured", getFeaturedBlogPosts)
+			public.GET("/blog/posts/popular", getPopularBlogPosts)
+			public.GET("/blog/posts/recent", getRecentBlogPosts)
+			public.GET("/blog/posts/related/:postId", getRelatedBlogPosts)
+			public.GET("/blog/posts/by-slug/:slug", getBlogPostBySlug)
+			public.GET("/blog/categories", getBlogCategories)
+			public.GET("/blog/author/:authorId", getBlogPostsByAuthor)
 		}
 
 		// Explore routes (public)
@@ -212,8 +302,24 @@ func SetupRouter() *gin.Engine {
 		{
 			explore.GET("/architects", searchProfiles)
 			explore.GET("/architects/nearby", getNearbyProfiles)
+			explore.GET("/architects/compare", compareArchitects)
+			explore.POST("/architects/compare", compareArchitects)
 			explore.GET("/profile/:username", getPublicProfile)
 		}
+
+		// Geolocation routes (public)
+		geo := v1.Group("/geo")
+		{
+			geo.GET("/nearby", searchNearby)
+			geo.GET("/search", searchByLocation)
+			geo.GET("/my-location", getLocationFromIP)
+			geo.GET("/cities", getAvailableCities)
+			geo.GET("/states", getAvailableStates)
+			geo.GET("/distance", calculateDistance)
+		}
+
+		// Analytics tracking (public - for tracking anonymous visitors)
+		v1.POST("/analytics/track", trackAnalyticsEvent)
 	}
 
 	return router

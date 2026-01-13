@@ -102,3 +102,65 @@ func GetImageURL(publicID string, transformation string) string {
 	return fmt.Sprintf("%s/%s", baseURL, publicID)
 }
 
+// UploadRaw faz upload de um arquivo raw (não-imagem) para o Cloudinary
+func UploadRaw(ctx context.Context, filePath string, folder string) (*uploader.UploadResult, error) {
+	if cld == nil {
+		if err := InitCloudinary(); err != nil {
+			return nil, err
+		}
+	}
+
+	overwrite := true
+	params := uploader.UploadParams{
+		Folder:       folder,
+		Overwrite:    &overwrite,
+		ResourceType: "raw",
+	}
+
+	result, err := cld.Upload.Upload(ctx, filePath, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload raw file to Cloudinary: %w", err)
+	}
+
+	return result, nil
+}
+
+// UploadVideo faz upload de um vídeo para o Cloudinary
+func UploadVideo(ctx context.Context, filePath string, folder string) (*uploader.UploadResult, error) {
+	if cld == nil {
+		if err := InitCloudinary(); err != nil {
+			return nil, err
+		}
+	}
+
+	overwrite := true
+	params := uploader.UploadParams{
+		Folder:       folder,
+		Overwrite:    &overwrite,
+		ResourceType: "video",
+	}
+
+	result, err := cld.Upload.Upload(ctx, filePath, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload video to Cloudinary: %w", err)
+	}
+
+	return result, nil
+}
+
+// DeleteRaw deleta um arquivo raw do Cloudinary
+func DeleteRaw(ctx context.Context, publicID string) error {
+	if cld == nil {
+		if err := InitCloudinary(); err != nil {
+			return err
+		}
+	}
+
+	_, err := cld.Upload.Destroy(ctx, uploader.DestroyParams{
+		PublicID:     publicID,
+		ResourceType: "raw",
+	})
+
+	return err
+}
+
