@@ -19,6 +19,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
 import type { Project } from '../types/api'
 import type { PublicProfile as PublicProfileType } from '../services/profile.service'
+import ConfirmModal from '../components/common/ConfirmModal'
 
 const PublicProfile = () => {
   const { username } = useParams<{ username: string }>()
@@ -32,6 +33,8 @@ const PublicProfile = () => {
   const [reviews, setReviews] = useState<ReviewWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [showRemoveFavoriteModal, setShowRemoveFavoriteModal] = useState(false)
+  const [removingFavorite, setRemovingFavorite] = useState(false)
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -139,27 +142,45 @@ const PublicProfile = () => {
 
     if (!profile?.userId) return
 
+    // Se for favorito, mostrar modal de confirmação
+    if (isFavorite) {
+      setShowRemoveFavoriteModal(true)
+      return
+    }
+
+    // Se não for favorito, adicionar diretamente
     try {
-      if (isFavorite) {
-        const response = await favoritesService.removeFavorite(profile.userId)
-        if (response.data || !response.error) {
-          setIsFavorite(false)
-          showToast('Removido dos favoritos', 'success')
-        } else {
-          showToast(response.error || 'Erro ao remover dos favoritos', 'error')
-        }
+      const response = await favoritesService.addFavorite(profile.userId)
+      if (response.data || !response.error) {
+        setIsFavorite(true)
+        showToast('Adicionado aos favoritos', 'success')
       } else {
-        const response = await favoritesService.addFavorite(profile.userId)
-        if (response.data || !response.error) {
-          setIsFavorite(true)
-          showToast('Adicionado aos favoritos', 'success')
-        } else {
-          showToast(response.error || 'Erro ao adicionar aos favoritos', 'error')
-        }
+        showToast(response.error || 'Erro ao adicionar aos favoritos', 'error')
       }
     } catch (error) {
-      console.error('Erro ao alternar favorito:', error)
-      showToast('Erro ao atualizar favoritos', 'error')
+      console.error('Erro ao adicionar favorito:', error)
+      showToast('Erro ao adicionar aos favoritos', 'error')
+    }
+  }
+
+  const handleConfirmRemoveFavorite = async () => {
+    if (!profile?.userId) return
+
+    setRemovingFavorite(true)
+    try {
+      const response = await favoritesService.removeFavorite(profile.userId)
+      if (response.data || !response.error) {
+        setIsFavorite(false)
+        showToast('Removido dos favoritos', 'success')
+        setShowRemoveFavoriteModal(false)
+      } else {
+        showToast(response.error || 'Erro ao remover dos favoritos', 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao remover favorito:', error)
+      showToast('Erro ao remover dos favoritos', 'error')
+    } finally {
+      setRemovingFavorite(false)
     }
   }
 
@@ -807,6 +828,19 @@ const PublicProfile = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de confirmação para remover favorito */}
+      <ConfirmModal
+        isOpen={showRemoveFavoriteModal}
+        onClose={() => setShowRemoveFavoriteModal(false)}
+        onConfirm={handleConfirmRemoveFavorite}
+        title="Remover dos favoritos?"
+        message={`Tem certeza que deseja remover ${profile?.displayName || 'este arquiteto'} dos seus favoritos?`}
+        confirmText="Remover"
+        cancelText="Cancelar"
+        variant="warning"
+        loading={removingFavorite}
+      />
     </div>
   )
 }

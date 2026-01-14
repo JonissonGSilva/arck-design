@@ -255,7 +255,8 @@ const Chat = () => {
 
   return (
     <div className="h-[calc(100vh-8rem)] max-w-7xl mx-auto">
-      <div className="flex items-center gap-4 mb-4">
+      {/* Header - apenas no desktop ou quando nenhuma conversa está selecionada no mobile */}
+      <div className={`flex items-center gap-4 mb-4 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <button
           onClick={() => navigate('/architect/dashboard')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -264,22 +265,27 @@ const Chat = () => {
         </button>
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Mensagens</h1>
-          <p className="text-gray-600 mt-1 text-xs md:text-sm">Converse com seus clientes</p>
+          <p className="text-gray-600 mt-1 text-xs md:text-sm hidden md:block">Converse com seus clientes</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 h-[calc(100%-5rem)] flex overflow-hidden shadow-sm">
-        {/* Lista de Conversas */}
-        <div className="w-full md:w-80 border-r border-gray-200 flex flex-col">
-          {/* Busca */}
-          <div className="p-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl border border-gray-200 h-[calc(100%-5rem)] md:h-[calc(100%-5rem)] flex overflow-hidden shadow-sm">
+        {/* Lista de Conversas - oculta no mobile quando uma conversa está selecionada */}
+        <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col ${
+          selectedConversation ? 'hidden md:flex' : 'flex'
+        }`}>
+          {/* Busca - com header no mobile */}
+          <div className="p-3 md:p-4 border-b border-gray-200">
+            <div className="flex items-center gap-3 mb-3 md:mb-0 md:hidden">
+              <h1 className="text-lg font-bold text-gray-900 flex-1">Mensagens</h1>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar conversas..."
                 maxLength={100}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -300,11 +306,11 @@ const Chat = () => {
                   <button
                     key={conv.id}
                     onClick={() => setSelectedConversation(conv.id)}
-                    className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition border-b border-gray-100 text-left relative group ${
-                      selectedConversation === conv.id ? 'bg-primary-50' : ''
+                    className={`w-full p-3 md:p-4 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition border-b border-gray-100 text-left relative group ${
+                      selectedConversation === conv.id ? 'bg-primary-50 md:bg-primary-50' : ''
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="w-12 h-12 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {conv.otherUser?.avatar ? (
                         <img 
                           src={conv.otherUser.avatar} 
@@ -312,28 +318,30 @@ const Chat = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Person sx={{ fontSize: 24 }} className="text-gray-600" />
+                        <Person sx={{ fontSize: 28 }} className="text-gray-600" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-gray-900 truncate">
+                      <div className="flex items-center justify-between mb-0.5 md:mb-1">
+                        <p className="font-semibold md:font-medium text-gray-900 truncate text-sm md:text-base">
                           {conv.otherUser?.name || 'Cliente'}
                         </p>
-                        {conv.unreadCount > 0 && (
-                          <span className="ml-2 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                            {conv.unreadCount}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {conv.lastMessage?.createdAt && (
+                            <p className="text-xs text-gray-500 whitespace-nowrap hidden sm:block">
+                              {formatDate(conv.lastMessage.createdAt)}
+                            </p>
+                          )}
+                          {conv.unreadCount > 0 && (
+                            <span className="w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                              {conv.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">
+                      <p className="text-sm text-gray-600 truncate pr-2">
                         {conv.lastMessage?.content || 'Sem mensagens'}
                       </p>
-                      {conv.lastMessage?.createdAt && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(conv.lastMessage.createdAt)}
-                        </p>
-                      )}
                     </div>
                     <button
                       onClick={(e) => handleDeleteConversation(conv.id, e)}
@@ -353,20 +361,23 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Área de Chat */}
-        <div className="flex-1 flex flex-col min-h-0">
+        {/* Área de Chat - oculta no mobile quando nenhuma conversa está selecionada */}
+        <div className={`flex-1 flex flex-col min-h-0 ${
+          !selectedConversation ? 'hidden md:flex' : 'flex'
+        }`}>
           {selectedConversation ? (
             <>
-              {/* Header do chat */}
-              <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-                <div className="flex items-center gap-3">
+              {/* Header do chat - estilo Facebook mobile */}
+              <div className="p-3 md:p-4 border-b border-gray-200 flex items-center justify-between bg-white md:bg-gray-50">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <button
                     onClick={() => setSelectedConversation(null)}
-                    className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+                    className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                    aria-label="Voltar"
                   >
-                    ←
+                    <ArrowLeft className="h-5 w-5 text-gray-600" />
                   </button>
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar ? (
                       <img 
                         src={conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar} 
@@ -374,13 +385,14 @@ const Chat = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Person className="text-gray-600" />
+                      <Person sx={{ fontSize: 20 }} className="text-gray-600" />
                     )}
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm md:text-base truncate">
                       {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Cliente'}
                     </p>
+                    <p className="text-xs text-gray-500 md:hidden">Ativo agora</p>
                   </div>
                 </div>
                 <button
@@ -390,15 +402,15 @@ const Chat = () => {
                       handleDeleteConversation(conv.id, {} as React.MouseEvent)
                     }
                   }}
-                  className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                  className="p-1.5 md:p-2 hover:bg-red-100 rounded-lg transition-colors flex-shrink-0"
                   title="Deletar conversa"
                 >
-                  <Trash2 className="h-5 w-5 text-red-600" />
+                  <Trash2 className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
                 </button>
               </div>
 
-              {/* Mensagens */}
-              <div className="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
+              {/* Mensagens - estilo Facebook mobile */}
+              <div className="flex-1 p-3 md:p-4 overflow-y-auto bg-gray-50 md:bg-gray-50 min-h-0">
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -422,18 +434,18 @@ const Chat = () => {
                       return (
                         <div
                           key={message.id}
-                          className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                          className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'} mb-1`}
                         >
                           <div
-                            className={`max-w-md px-4 py-2 rounded-2xl ${
+                            className={`max-w-[85%] md:max-w-md px-3 md:px-4 py-2 md:py-2.5 rounded-2xl ${
                               isMyMessage
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-white text-gray-900 border border-gray-200'
+                                ? 'bg-primary-600 text-white rounded-tr-sm'
+                                : 'bg-white text-gray-900 border border-gray-200 rounded-tl-sm'
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                            <p className="text-sm md:text-sm whitespace-pre-wrap break-words">{message.text}</p>
                             <p
-                              className={`text-xs mt-1 ${
+                              className={`text-[10px] md:text-xs mt-1 ${
                                 isMyMessage ? 'text-primary-100' : 'text-gray-500'
                               }`}
                             >
@@ -448,8 +460,8 @@ const Chat = () => {
                 )}
               </div>
 
-              {/* Input */}
-              <div className="p-3 md:p-4 border-t border-gray-200 bg-white">
+              {/* Input - estilo Facebook mobile */}
+              <div className="p-2.5 md:p-4 border-t border-gray-200 bg-white">
                 <div className="flex gap-2 items-end">
                   <textarea
                     value={messageText}
@@ -464,11 +476,11 @@ const Chat = () => {
                         handleSendMessage()
                       }
                     }}
-                    placeholder="Digite sua mensagem..."
+                    placeholder="Digite uma mensagem..."
                     disabled={sendingMessage}
                     maxLength={5000}
-                    rows={Math.min(Math.max(messageText.split('\n').length, 2), 5) || 2}
-                    className="flex-1 px-3 md:px-4 py-2.5 md:py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none min-h-[60px] max-h-[120px]"
+                    rows={Math.min(Math.max(messageText.split('\n').length, 1), 4) || 1}
+                    className="flex-1 px-3 md:px-4 py-2 md:py-2.5 text-sm border border-gray-300 rounded-full md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none min-h-[40px] md:min-h-[60px] max-h-[100px] md:max-h-[120px]"
                   />
                   <LoadingButton
                     onClick={handleSendMessage}
@@ -477,14 +489,15 @@ const Chat = () => {
                     size="md"
                     disabled={!messageText.trim()}
                     icon={<Send className="h-4 w-4 md:h-5 md:w-5" />}
+                    className="rounded-full md:rounded-lg flex-shrink-0"
                   >
-                    <span className="hidden sm:inline text-sm">Enviar</span>
+                    <span className="hidden md:inline text-sm">Enviar</span>
                   </LoadingButton>
                 </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 hidden md:flex">
               <Person sx={{ fontSize: 64 }} className="mb-4 text-gray-400" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Selecione uma conversa</h3>
               <p className="text-gray-500">Escolha uma conversa na lista para ver as mensagens</p>

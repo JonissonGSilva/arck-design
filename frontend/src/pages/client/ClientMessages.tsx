@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Chat, Person, Email, Send } from '@mui/icons-material'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Search, ArrowLeft } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
 import { messageService } from '../../services'
 import LoadingButton from '../../components/common/LoadingButton'
@@ -36,6 +36,7 @@ const ClientMessages: React.FC = () => {
   const [deletingConversation, setDeletingConversation] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadConversations()
@@ -65,6 +66,11 @@ const ClientMessages: React.FC = () => {
 
     loadMessagesForConversation()
   }, [selectedConversation])
+
+  // Scroll para última mensagem
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   // Verificar se há query params para iniciar conversa com mensagem pré-preenchida
   useEffect(() => {
@@ -330,12 +336,41 @@ const ClientMessages: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] flex overflow-hidden">
-      {/* Lista de conversas */}
-      <div className={`w-full md:w-80 bg-white border-r border-gray-200 flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Mensagens</h1>
+    <div className="h-[calc(100vh-8rem)] max-w-7xl mx-auto">
+      {/* Header - apenas no desktop ou quando nenhuma conversa está selecionada no mobile */}
+      <div className={`flex items-center gap-4 mb-4 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+        <button
+          onClick={() => navigate('/client/dashboard')}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-600" />
+        </button>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Mensagens</h1>
+          <p className="text-gray-600 mt-1 text-xs md:text-sm hidden md:block">Converse com arquitetos</p>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 h-[calc(100%-5rem)] md:h-[calc(100%-5rem)] flex overflow-hidden shadow-sm">
+        {/* Lista de conversas - oculta no mobile quando uma conversa está selecionada */}
+        <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col ${
+          selectedConversation ? 'hidden md:flex' : 'flex'
+        }`}>
+          {/* Busca - com header no mobile */}
+          <div className="p-3 md:p-4 border-b border-gray-200">
+            <div className="flex items-center gap-3 mb-3 md:mb-0 md:hidden">
+              <h1 className="text-lg font-bold text-gray-900 flex-1">Mensagens</h1>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar conversas..."
+                maxLength={100}
+                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+          </div>
 
         {conversations.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -351,35 +386,39 @@ const ClientMessages: React.FC = () => {
               <button
                 key={conv.id}
                 onClick={() => setSelectedConversation(conv.id)}
-                className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition border-b border-gray-100 text-left relative group ${
-                  selectedConversation === conv.id ? 'bg-primary-50' : ''
+                className={`w-full p-3 md:p-4 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition border-b border-gray-100 text-left relative group ${
+                  selectedConversation === conv.id ? 'bg-primary-50 md:bg-primary-50' : ''
                 }`}
               >
-                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-12 h-12 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {conv.otherUser?.avatar ? (
                     <img src={conv.otherUser.avatar} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-xl">{(conv.otherUser?.name || 'A').charAt(0).toUpperCase()}</span>
+                    <Person sx={{ fontSize: 28 }} className="text-gray-600" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                    <span className="font-medium text-gray-900 truncate">{conv.otherUser?.name || 'Arquiteto'}</span>
-                    {conv.lastMessage && (
-                      <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
-                        {formatDate(conv.lastMessage.createdAt)}
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between mb-0.5 md:mb-1">
+                    <p className="font-semibold md:font-medium text-gray-900 truncate text-sm md:text-base">
+                      {conv.otherUser?.name || 'Arquiteto'}
+                    </p>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {conv.lastMessage?.createdAt && (
+                        <p className="text-xs text-gray-500 whitespace-nowrap hidden sm:block">
+                          {formatDate(conv.lastMessage.createdAt)}
+                        </p>
+                      )}
+                      {conv.unreadCount > 0 && (
+                        <span className="w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                          {conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {conv.lastMessage && (
-                    <p className="text-sm text-gray-500 truncate">{conv.lastMessage.content}</p>
-                  )}
+                  <p className="text-sm text-gray-600 truncate pr-2">
+                    {conv.lastMessage?.content || 'Sem mensagens'}
+                  </p>
                 </div>
-                {conv.unreadCount > 0 && (
-                  <span className="w-5 h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center flex-shrink-0">
-                    {conv.unreadCount}
-                  </span>
-                )}
                 <button
                   onClick={(e) => handleDeleteConversation(conv.id, e)}
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-opacity"
@@ -397,58 +436,62 @@ const ClientMessages: React.FC = () => {
         )}
       </div>
 
-      {/* Área de chat */}
-      <div className={`flex-1 flex flex-col min-w-0 ${!selectedConversation && !isInitializingConversation ? 'hidden md:flex' : 'flex'}`}>
-        {(selectedConversation || isInitializingConversation) ? (
-          <div className="flex-1 flex flex-col min-h-0">
-            {isInitializingConversation ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Iniciando conversa...</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Header do chat */}
-                <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedConversation(null)}
-                      className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-                    >
-                      ←
-                    </button>
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                      {conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar ? (
-                        <img 
-                          src={conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar} 
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Person className="text-gray-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Conversa'}
-                      </p>
-                    </div>
+        {/* Área de Chat - oculta no mobile quando nenhuma conversa está selecionada */}
+        <div className={`flex-1 flex flex-col min-h-0 ${
+          !selectedConversation && !isInitializingConversation ? 'hidden md:flex' : 'flex'
+        }`}>
+          {(selectedConversation || isInitializingConversation) ? (
+            <div className="flex-1 flex flex-col min-h-0">
+              {isInitializingConversation ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Iniciando conversa...</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      const conv = conversations.find(c => c.id === selectedConversation)
-                      if (conv) {
-                        handleDeleteConversation(conv.id, {} as React.MouseEvent)
-                      }
-                    }}
-                    className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                    title="Deletar conversa"
-                  >
-                    <Trash2 className="h-5 w-5 text-red-600" />
-                  </button>
                 </div>
+              ) : (
+                <>
+                  {/* Header do chat - estilo Facebook mobile */}
+                  <div className="p-3 md:p-4 border-b border-gray-200 flex items-center justify-between bg-white md:bg-gray-50">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <button
+                        onClick={() => setSelectedConversation(null)}
+                        className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                        aria-label="Voltar"
+                      >
+                        <ArrowLeft className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar ? (
+                          <img 
+                            src={conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar} 
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Person sx={{ fontSize: 20 }} className="text-gray-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm md:text-base truncate">
+                          {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Arquiteto'}
+                        </p>
+                        <p className="text-xs text-gray-500 md:hidden">Ativo agora</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const conv = conversations.find(c => c.id === selectedConversation)
+                        if (conv) {
+                          handleDeleteConversation(conv.id, {} as React.MouseEvent)
+                        }
+                      }}
+                      className="p-1.5 md:p-2 hover:bg-red-100 rounded-lg transition-colors flex-shrink-0"
+                      title="Deletar conversa"
+                    >
+                      <Trash2 className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
+                    </button>
+                  </div>
 
                 {/* Mensagens */}
                 <div className="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
