@@ -185,6 +185,7 @@ func UpdatePrivacy(ctx context.Context, userID string, privacy *models.PrivacySe
 
 // ProfileData dados do perfil do usuário
 type ProfileData struct {
+	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Email  string `json:"email"`
 	Phone  string `json:"phone,omitempty"`
@@ -206,8 +207,11 @@ func GetProfile(ctx context.Context, userID string) (*ProfileData, error) {
 	}
 
 	return &ProfileData{
+		ID:     user.ID.Hex(),
 		Name:   user.Name,
 		Email:  user.Email,
+		Phone:  user.Phone,
+		Bio:    user.Bio,
 		Avatar: user.Avatar,
 	}, nil
 }

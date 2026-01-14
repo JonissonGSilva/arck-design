@@ -97,6 +97,8 @@ type User struct {
 	Role          UserRole           `bson:"role" json:"role"`
 	OAuth         *OAuth             `bson:"oauth,omitempty" json:"oauth,omitempty"`
 	Avatar        string             `bson:"avatar,omitempty" json:"avatar,omitempty"`
+	Phone         string             `bson:"phone,omitempty" json:"phone,omitempty"`
+	Bio           string             `bson:"bio,omitempty" json:"bio,omitempty"`
 	StorageUsed   int64              `bson:"storageUsed" json:"storageUsed"`
 	StorageLimit  int64              `bson:"storageLimit" json:"storageLimit"`
 	Plan          PlanType           `bson:"plan" json:"plan"`
