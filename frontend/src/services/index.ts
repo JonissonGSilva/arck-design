@@ -27,6 +27,8 @@ export { servicesService } from './services.service'
 export type { Service, ServiceCategory, ServiceStats, CreateServiceRequest, UpdateServiceRequest, ServiceFilters } from './services.service'
 export { notificationService } from './notification.service'
 export type { Notification, NotificationType, NotificationPreferences } from './notification.service'
+export { reviewService } from './review.service'
+export type { Review, ReviewWithDetails, CreateReviewRequest, UpdateReviewRequest, ArchitectRatingStats } from './review.service'
 
 // Re-exportar tipos principais (apenas da API)
 export type * from '../types/api'

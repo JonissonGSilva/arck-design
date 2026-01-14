@@ -28,6 +28,7 @@ export const sanitizeInput = (input: string): string => {
 
 /**
  * Sanitiza mas mantém alguns caracteres especiais necessários
+ * Permite caracteres acentuados e especiais do português (ç, ~, ^, ´, `)
  */
 export const sanitizeText = (input: string, allowSpecialChars: string[] = []): string => {
   if (!input || typeof input !== 'string') return ''
@@ -39,21 +40,29 @@ export const sanitizeText = (input: string, allowSpecialChars: string[] = []): s
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     // Remove eventos JavaScript
     .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    // Remove caracteres de controle
-    .replace(/[\x00-\x1F\x7F]/g, '')
+    // Remove caracteres de controle (exceto quebra de linha e tab)
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
   
   // Se houver caracteres permitidos, não remove
   if (allowSpecialChars.length > 0) {
-    // Mantém apenas caracteres alfanuméricos, espaços e caracteres permitidos
-    sanitized = sanitized.replace(/[^a-zA-Z0-9\s]/g, (char) => {
+    // Mantém caracteres alfanuméricos, espaços, caracteres acentuados, marcas diacríticas e caracteres permitidos
+    // Permite: letras (incluindo acentuadas), números, espaços, quebras de linha, tabs, marcas diacríticas
+    // e caracteres especiais permitidos explicitamente
+    // \p{L} = letras (inclui acentuadas como á, é, ç, ã, etc.)
+    // \p{N} = números
+    // \p{M} = marcas diacríticas (como ~, ^, ´, `)
+    // \s = espaços em branco
+    sanitized = sanitized.replace(/[^\p{L}\p{N}\p{M}\s\n\t]/gu, (char) => {
       return allowSpecialChars.includes(char) ? char : ''
     })
   } else {
-    // Remove todos os caracteres especiais
-    sanitized = sanitized.replace(/[<>'"&]/g, '')
+    // Remove apenas caracteres perigosos, mantendo acentos e caracteres especiais do português
+    // Permite letras (incluindo acentuadas), números, espaços, marcas diacríticas e pontuação comum
+    sanitized = sanitized.replace(/[<>'"&]/g, '') // Remove apenas caracteres perigosos para XSS
+    // Não remove outros caracteres quando não há allowSpecialChars, mantém tudo exceto os perigosos
   }
   
-  return sanitized.trim()
+  return sanitized
 }
 
 /**
@@ -161,21 +170,70 @@ export const maskCEP = (value: string): string => {
 
 /**
  * Máscara de CAU (Registro Profissional)
+ * Formato: CAU/UF A00000-0
+ * Exemplo: CAU/SP A12345-6
  */
 export const maskCAU = (value: string): string => {
   if (!value) return ''
   
-  // CAU geralmente é A seguido de números: A12345678
-  const cleaned = value.replace(/[^A-Za-z0-9]/g, '')
+  // Remove tudo exceto letras e números, mas mantém a estrutura se já tiver "CAU/"
+  let cleaned = value.toUpperCase()
   
-  // Se começar com letra, mantém a letra e aplica máscara nos números
-  if (/^[A-Za-z]/.test(cleaned)) {
-    const letter = cleaned[0].toUpperCase()
-    const numbers = cleaned.slice(1).replace(/\D/g, '')
-    return letter + numbers
+  // Se já começar com "CAU/", processa apenas o que vem depois
+  if (cleaned.startsWith('CAU/')) {
+    cleaned = cleaned.slice(4) // Remove "CAU/"
+  } else if (cleaned.startsWith('CAU')) {
+    cleaned = cleaned.slice(3) // Remove "CAU" sem a barra
   }
   
-  return cleaned.toUpperCase()
+  // Remove espaços e caracteres especiais, mantendo apenas letras e números
+  cleaned = cleaned.replace(/[^A-Z0-9]/g, '')
+  
+  // Se não tiver conteúdo, retorna apenas "CAU/"
+  if (cleaned.length === 0) return 'CAU/'
+  
+  // Formato esperado: UF (2 letras) + A (1 letra) + 6 dígitos
+  // Extrai UF (primeiras 2 letras)
+  const ufMatch = cleaned.match(/^([A-Z]{0,2})/)
+  const uf = ufMatch ? ufMatch[1] : ''
+  let remaining = cleaned.slice(uf.length)
+  
+  // Extrai a letra inicial (A, B, C, etc.) - apenas uma letra
+  const letterMatch = remaining.match(/^([A-Z]{0,1})/)
+  const letter = letterMatch ? letterMatch[1] : ''
+  remaining = remaining.slice(letter.length)
+  
+  // Extrai os números (máximo 6 dígitos: 5 + 1)
+  const numbers = remaining.replace(/\D/g, '').slice(0, 6)
+  
+  // Monta a máscara
+  let masked = 'CAU/'
+  
+  // Adiciona UF (2 letras)
+  if (uf.length > 0) {
+    masked += uf.slice(0, 2)
+  }
+  
+  // Adiciona espaço após UF se houver letra ou números
+  if ((uf.length >= 2 || uf.length > 0) && (letter.length > 0 || numbers.length > 0)) {
+    masked += ' '
+  }
+  
+  // Adiciona letra inicial
+  if (letter.length > 0) {
+    masked += letter
+  }
+  
+  // Adiciona números com hífen após 5 dígitos
+  if (numbers.length > 0) {
+    if (numbers.length <= 5) {
+      masked += numbers
+    } else {
+      masked += numbers.slice(0, 5) + '-' + numbers.slice(5, 6)
+    }
+  }
+  
+  return masked
 }
 
 /**

@@ -13,7 +13,8 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import VerifiedIcon from '@mui/icons-material/Verified'
-import { profileService, favoritesService, projectService, model3dService } from '../services'
+import { profileService, favoritesService, projectService, model3dService, reviewService } from '../services'
+import type { ReviewWithDetails } from '../services/review.service'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
 import type { Project } from '../types/api'
@@ -28,49 +29,89 @@ const PublicProfile = () => {
   const [profile, setProfile] = useState<PublicProfileType | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [models3D, setModels3D] = useState<any[]>([])
+  const [reviews, setReviews] = useState<ReviewWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
 
   useEffect(() => {
     const loadProfile = async () => {
-      if (!username) return
+      if (!username) {
+        setLoading(false)
+        return
+      }
 
       setLoading(true)
-
-      const response = await profileService.getPublicProfile(username)
+      try {
+        const response = await profileService.getPublicProfile(username)
 
       if (response.data) {
         setProfile(response.data)
         // Carregar projetos do arquiteto
-        if (response.data.userId) {
+        if (response.data?.userId) {
           const projectsResponse = await projectService.list()
           if (projectsResponse.data) {
             // Filtrar projetos do arquiteto (se necessário implementar no backend)
             setProjects(projectsResponse.data.data || [])
           }
 
-          // Carregar modelos 3D do arquiteto se a customização permitir
-          if (response.data.customization?.show3DModels !== false) {
+          // Carregar modelos 3D do arquiteto (sempre tentar carregar, a exibição será controlada pela customização)
+          try {
+            // Tentar carregar modelos do arquiteto
+            const modelsResponse = await model3dService.list({ 
+              userId: response.data?.userId
+            })
+            if (modelsResponse.data?.data) {
+              // Filtrar apenas modelos prontos e públicos (ou todos se for o próprio perfil)
+              const readyModels = modelsResponse.data.data.filter((model: any) => 
+                model.status === 'ready' && (model.isPublic !== false || user?.id === response.data?.userId)
+              )
+              setModels3D(readyModels)
+              console.log('[PublicProfile] Modelos 3D carregados:', readyModels.length, 'de', modelsResponse.data.data.length)
+            } else {
+              console.log('[PublicProfile] Nenhum modelo 3D encontrado para userId:', response.data?.userId)
+            }
+          } catch (error) {
+            console.error('[PublicProfile] Erro ao carregar modelos 3D:', error)
+          }
+
+          // Carregar avaliações do arquiteto se a customização permitir
+          if (response.data.customization?.showReviews !== false) {
             try {
-              const modelsResponse = await model3dService.list({ userId: response.data.userId, isPublic: true })
-              if (modelsResponse.data?.data) {
-                setModels3D(modelsResponse.data.data.filter((model: any) => model.status === 'ready'))
+              const reviewsResponse = await reviewService.getByArchitect(response.data?.userId || '', 1, 10)
+              if (reviewsResponse.data?.data) {
+                setReviews(reviewsResponse.data.data)
               }
             } catch (error) {
-              console.error('Erro ao carregar modelos 3D:', error)
+              console.error('Erro ao carregar avaliações:', error)
             }
           }
 
           // Verificar se o arquiteto está nos favoritos
-          if (isAuthenticated && user?.role !== 'arquiteto') {
+          if (isAuthenticated && user?.role !== 'arquiteto' && response.data?.userId) {
             try {
+              console.log('[PublicProfile] Verificando favorito para userId:', response.data.userId)
               const favoriteCheck = await favoritesService.checkFavorite(response.data.userId)
-              if (favoriteCheck.data) {
-                setIsFavorite(favoriteCheck.data.isFavorite)
+              console.log('[PublicProfile] Resposta completa do checkFavorite:', JSON.stringify(favoriteCheck, null, 2))
+              
+              // Verificar se a resposta tem dados
+              if (favoriteCheck.data !== undefined && favoriteCheck.data !== null) {
+                const isFav = favoriteCheck.data.isFavorite === true
+                console.log('[PublicProfile] isFavorite definido como:', isFav)
+                setIsFavorite(isFav)
+              } else if (favoriteCheck.error) {
+                console.error('[PublicProfile] Erro ao verificar favorito:', favoriteCheck.error)
+                setIsFavorite(false)
+              } else {
+                console.warn('[PublicProfile] Resposta do checkFavorite sem data nem error:', favoriteCheck)
+                setIsFavorite(false)
               }
             } catch (error) {
-              console.error('Erro ao verificar favorito:', error)
+              console.error('[PublicProfile] Erro ao verificar favorito:', error)
+              setIsFavorite(false)
             }
+          } else {
+            // Se não for cliente autenticado, garantir que isFavorite seja false
+            setIsFavorite(false)
           }
         }
       } else if (response.error) {
@@ -79,10 +120,15 @@ const PublicProfile = () => {
       }
 
       setLoading(false)
+      } catch (error) {
+        console.error('Erro ao carregar perfil:', error)
+        showToast('Erro ao carregar perfil', 'error')
+        setLoading(false)
+      }
     }
 
     loadProfile()
-  }, [username, isAuthenticated, user])
+  }, [username, isAuthenticated, user?.id, navigate, showToast])
 
   const handleToggleFavorite = async () => {
     if (!isAuthenticated) {
@@ -93,18 +139,27 @@ const PublicProfile = () => {
 
     if (!profile?.userId) return
 
-    if (isFavorite) {
-      const response = await favoritesService.removeFavorite(profile.userId)
-      if (response.data) {
-        setIsFavorite(false)
-        showToast('Removido dos favoritos', 'success')
+    try {
+      if (isFavorite) {
+        const response = await favoritesService.removeFavorite(profile.userId)
+        if (response.data || !response.error) {
+          setIsFavorite(false)
+          showToast('Removido dos favoritos', 'success')
+        } else {
+          showToast(response.error || 'Erro ao remover dos favoritos', 'error')
+        }
+      } else {
+        const response = await favoritesService.addFavorite(profile.userId)
+        if (response.data || !response.error) {
+          setIsFavorite(true)
+          showToast('Adicionado aos favoritos', 'success')
+        } else {
+          showToast(response.error || 'Erro ao adicionar aos favoritos', 'error')
+        }
       }
-    } else {
-      const response = await favoritesService.addFavorite(profile.userId)
-      if (response.data) {
-        setIsFavorite(true)
-        showToast('Adicionado aos favoritos', 'success')
-      }
+    } catch (error) {
+      console.error('Erro ao alternar favorito:', error)
+      showToast('Erro ao atualizar favoritos', 'error')
     }
   }
 
@@ -174,7 +229,12 @@ const PublicProfile = () => {
   }
 
   // Obter customização do perfil ou usar padrão
-  const customization = profile?.customization || {
+  const customization = profile?.customization ? {
+    ...profile.customization,
+    show3DModels: profile.customization.show3DModels !== undefined 
+      ? profile.customization.show3DModels 
+      : true
+  } : {
     layout: 'grid',
     gridColumns: 3,
     showStats: true,
@@ -413,9 +473,7 @@ const PublicProfile = () => {
                 alt="Cover"
                 className="w-full h-full object-cover"
                 style={{
-                  objectPosition: 'center center',
-                  minWidth: '100%',
-                  minHeight: '100%'
+                  objectPosition: 'center center'
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
@@ -468,7 +526,7 @@ const PublicProfile = () => {
                   {profile.cau && (
                     <span className="flex items-center gap-1">
                       <ApartmentIcon sx={{ fontSize: 14 }} />
-                      CAU {profile.cau}
+                      {profile.cau.startsWith('CAU/') ? profile.cau : `CAU/${profile.cau}`}
                     </span>
                   )}
                 </div>
@@ -478,16 +536,17 @@ const PublicProfile = () => {
                 {user?.role !== 'arquiteto' && (
                   <button
                     onClick={handleToggleFavorite}
-                    className={`p-2 md:p-2.5 rounded-lg border transition-all ${
+                    className={`px-4 md:px-6 py-2 md:py-3 rounded-lg border transition-all flex items-center justify-center ${
                       isFavorite
                         ? 'bg-red-50 border-red-200 text-red-600'
                         : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                     }`}
+                    title={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
                   >
                     {isFavorite ? (
-                      <FavoriteIcon sx={{ fontSize: 20 }} />
+                      <FavoriteIcon sx={{ fontSize: 18 }} />
                     ) : (
-                      <FavoriteBorderIcon sx={{ fontSize: 20 }} />
+                      <FavoriteBorderIcon sx={{ fontSize: 18 }} />
                     )}
                   </button>
                 )}
@@ -511,8 +570,8 @@ const PublicProfile = () => {
             {/* Stats */}
             {customization.showStats && (
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-3 md:py-4 border-t border-b ${borderClass} mb-4`}>
-              <div>
-                <div className={`flex items-center justify-center md:justify-start gap-1 ${subtextClass} mb-1`}>
+              <div className="flex flex-col items-start">
+                <div className={`flex items-center gap-1 mb-1`}>
                   <StarIcon sx={{ fontSize: 16, color: '#fbbf24' }} />
                   <span className={`font-bold ${textClass} text-sm md:text-base`}>
                     {profile.ratings?.average?.toFixed(1) || 'Novo'}
@@ -522,20 +581,20 @@ const PublicProfile = () => {
                   {profile.ratings?.total || 0} avaliações
                 </div>
               </div>
-              <div>
+              <div className="flex flex-col items-start">
                 <div className={`text-lg md:text-xl font-bold ${textClass} mb-1`}>
                   {profile.projectsCount || 0}
                 </div>
                 <div className={`text-xs md:text-sm ${subtextClass}`}>Projetos</div>
               </div>
-              <div>
+              <div className="flex flex-col items-start">
                 <div className={`text-lg md:text-xl font-bold ${textClass} mb-1`}>
                   {profile.experience || '-'}
                 </div>
                 <div className={`text-xs md:text-sm ${subtextClass}`}>Anos</div>
               </div>
-              <div>
-                <div className="flex items-center justify-center md:justify-start gap-1 mb-1">
+              <div className="flex flex-col items-start">
+                <div className="flex items-center gap-1 mb-1">
                   <VisibilityIcon sx={{ fontSize: 16, color: customization.backgroundStyle === 'dark' ? '#9ca3af' : '#6b7280' }} />
                   <span className={`font-bold ${textClass} text-sm md:text-base`}>
                     {profile.viewsCount?.toLocaleString('pt-BR') || 0}
@@ -548,14 +607,14 @@ const PublicProfile = () => {
 
             {/* Bio */}
             {profile.bio && (
-              <p className={`${subtextClass} leading-relaxed text-sm md:text-base mb-4`}>
+              <p className={`${subtextClass} leading-relaxed text-sm md:text-base mb-4 md:mb-6`}>
                 {profile.bio}
               </p>
             )}
 
             {/* Specialties */}
             {profile.specialties && profile.specialties.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-4 md:mb-6">
                 {profile.specialties.map((specialty) => (
                   <span
                     key={specialty}
@@ -636,7 +695,7 @@ const PublicProfile = () => {
             {renderProjectsGrid()}
           </div>
         ) : (
-          <div className={`${cardBgClass} rounded-xl shadow-lg p-8 text-center border ${borderClass}`}>
+          <div className={`${cardBgClass} rounded-xl shadow-lg p-8 text-center border ${borderClass} mb-6 md:mb-8`}>
             <ApartmentIcon sx={{ fontSize: 48, color: customization.backgroundStyle === 'dark' ? '#6b7280' : '#d1d5db' }} />
             <h3 className={`text-lg font-semibold ${textClass} mt-4 mb-2`}>Nenhum projeto publicado</h3>
             <p className={subtextClass}>Este arquiteto ainda não publicou projetos no portfólio.</p>
@@ -644,7 +703,7 @@ const PublicProfile = () => {
         )}
 
         {/* 3D Models Section */}
-        {customization.show3DModels && models3D.length > 0 && (
+        {customization.show3DModels !== false && models3D.length > 0 && (
           <div className={`${cardBgClass} rounded-xl shadow-lg p-4 md:p-6 mb-6 md:mb-8 border ${borderClass}`}>
             <h2 className={`text-xl md:text-2xl font-bold ${textClass} mb-4 md:mb-6`}>Modelos 3D</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
@@ -653,8 +712,8 @@ const PublicProfile = () => {
                   key={model.id}
                   className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all"
                   onClick={() => {
-                    // Navegar para visualização do modelo ou abrir modal
-                    window.open(`/models3d/${model.id}`, '_blank')
+                    // Navegar para visualização do modelo
+                    window.location.href = `/models3d/${model.id}`
                   }}
                 >
                   {model.thumbnailUrl ? (
@@ -674,6 +733,72 @@ const PublicProfile = () => {
                       <p className="text-white/80 text-[10px] md:text-xs truncate">
                         {model.originalFormat?.toUpperCase() || '3D'}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Reviews Section */}
+        {customization.showReviews !== false && reviews.length > 0 && (
+          <div className={`${cardBgClass} rounded-xl shadow-lg p-4 md:p-6 mb-6 md:mb-8 border ${borderClass}`}>
+            <h2 className={`text-xl md:text-2xl font-bold ${textClass} mb-4 md:mb-6`}>
+              Avaliações ({profile?.ratings?.total || reviews.length})
+            </h2>
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review.id} className={`p-4 rounded-lg border ${borderClass}`}>
+                  <div className="flex items-start gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                      {review.clientAvatar ? (
+                        <img
+                          src={review.clientAvatar}
+                          alt={review.clientName}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className={`text-lg font-semibold ${textClass}`}>
+                          {review.clientName?.charAt(0).toUpperCase() || 'C'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`font-semibold ${textClass}`}>
+                          {review.clientName || 'Cliente'}
+                        </span>
+                        {review.verified && (
+                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                            Verificado
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <StarIcon
+                              key={star}
+                              sx={{
+                                fontSize: 16,
+                                color: star <= review.rating ? '#fbbf24' : '#d1d5db',
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className={`text-xs ${subtextClass}`}>
+                          {new Date(review.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                      {review.comment && (
+                        <p className={`text-sm ${subtextClass} mt-2`}>{review.comment}</p>
+                      )}
+                      {review.projectTitle && (
+                        <p className={`text-xs ${subtextClass} mt-1 italic`}>
+                          Projeto: {review.projectTitle}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

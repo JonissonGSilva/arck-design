@@ -225,10 +225,17 @@ export const model3dService = {
   },
 
   /**
-   * Busca um modelo por ID
+   * Busca um modelo por ID (requer autenticação)
    */
   getById: async (id: string): Promise<ApiResponse<ModelFile>> => {
     return api.get<ModelFile>(`/models3d/${id}`)
+  },
+
+  /**
+   * Busca um modelo público por ID (não requer autenticação)
+   */
+  getPublicById: async (id: string): Promise<ApiResponse<ModelFile>> => {
+    return api.get<ModelFile>(`/public/models3d/${id}`)
   },
 
   /**

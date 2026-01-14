@@ -372,7 +372,8 @@ const Settings = () => {
                 <textarea
                   value={profile.bio || ''}
                   onChange={(e) => {
-                    const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-'])
+                    // Para biografia, permitir todos os caracteres acentuados e especiais comuns
+                    const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')', '[', ']', '{', '}', '/', '\\', '@', '#', '$', '%', '*', '+', '=', '_', '|', '~', '`', '^', '´', '°', 'ª', 'º'])
                     setProfile({...profile, bio: limitLength(sanitized, INPUT_LIMITS.BIO)})
                   }}
                   maxLength={INPUT_LIMITS.BIO}

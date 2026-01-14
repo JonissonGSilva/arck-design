@@ -85,7 +85,7 @@ const PublicProfile = () => {
             : '',
           specialty: profile.specialty || '',
           experience: profile.experience || '',
-          cau: profile.cau || '',
+          cau: profile.cau ? (profile.cau.startsWith('CAU/') ? profile.cau : `CAU/${profile.cau}`) : '',
           website: profile.website || '',
           email: profile.email || '',
           phone: profile.phone || '',
@@ -369,10 +369,10 @@ const PublicProfile = () => {
       const profileData: Partial<PublicProfileType> = {
         displayName: sanitizeInput(formData.displayName),
         username: formData.username.toLowerCase().trim(),
-        bio: sanitizeText(formData.bio, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';']),
+        bio: sanitizeText(formData.bio, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')', '[', ']', '{', '}', '/', '\\', '@', '#', '$', '%', '*', '+', '=', '_', '|', '~', '`', '^', '´', '°', 'ª', 'º']),
         specialty: sanitizeInput(formData.specialty),
         experience: sanitizeText(formData.experience, ['+', ' ', 'a', 'n', 'o', 's', 'A', 'N', 'O', 'S']),
-        cau: sanitizeInput(formData.cau),
+        cau: formData.cau ? formData.cau.replace(/^CAU\//i, '').replace(/\s+/g, ' ').trim() : undefined, // Remove "CAU/" e normaliza espaços, salva como "UF A00000-0"
         website: formData.website ? sanitizeUrl(formData.website) : undefined,
         email: sanitizeInput(formData.email.toLowerCase().trim()),
         phone: formData.phone ? unmask(formData.phone) : undefined,
@@ -682,7 +682,7 @@ const PublicProfile = () => {
                     onChange={handleChange}
                     maxLength={INPUT_LIMITS.CAU}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Ex: A12345678"
+                    placeholder="Ex: CAU/SP A12345-6"
                   />
                 </div>
               </div>

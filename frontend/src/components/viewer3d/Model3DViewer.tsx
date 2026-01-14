@@ -222,7 +222,7 @@ const Model3DViewer: React.FC<Model3DViewerProps> = ({
           setIsLoading(false)
           onLoad?.()
         } catch (err) {
-          const errorMessage = 'Erro ao processar modelo 3D'
+          const errorMessage = err instanceof Error ? err.message : 'Erro ao processar modelo 3D'
           setError(errorMessage)
           setIsLoading(false)
           onError?.(errorMessage)
@@ -244,19 +244,20 @@ const Model3DViewer: React.FC<Model3DViewerProps> = ({
         setLoadProgress(progress)
         onProgress?.(progress)
       },
-      (err) => {
+      (err: unknown) => {
         let errorMessage = 'Erro ao carregar modelo 3D'
         
         // Mensagens de erro mais específicas
-        if (err.message) {
-          if (err.message.includes('404') || err.message.includes('Not Found')) {
+        const error = err instanceof Error ? err : { message: String(err) }
+        if (error.message) {
+          if (error.message.includes('404') || error.message.includes('Not Found')) {
             errorMessage = 'Modelo não encontrado. Verifique se a URL está correta.'
-          } else if (err.message.includes('CORS') || err.message.includes('Network')) {
+          } else if (error.message.includes('CORS') || error.message.includes('Network')) {
             errorMessage = 'Erro de conexão. Verifique se o servidor está acessível e permite CORS.'
-          } else if (err.message.includes('Failed to load')) {
+          } else if (error.message.includes('Failed to load')) {
             errorMessage = 'Falha ao carregar o arquivo. Verifique se o formato é suportado (GLB/GLTF).'
           } else {
-            errorMessage = `Erro: ${err.message}`
+            errorMessage = `Erro: ${error.message}`
           }
         }
         

@@ -21,6 +21,7 @@ import Signup from './pages/Signup'
 import Pricing from './pages/Pricing'
 import ProjectView from './pages/ProjectView'
 import PublicProfile from './pages/PublicProfile'
+import Model3DView from './pages/Model3DView'
 import NotFound from './pages/NotFound'
 
 // Páginas do arquiteto
@@ -67,6 +68,7 @@ function App() {
                             <Route path="/pricing" element={<Pricing />} />
                             <Route path="/project/:id" element={<ProjectView />} />
                             <Route path="/portfolio/:username" element={<PublicProfile />} />
+                            <Route path="/models3d/:id" element={<Model3DView />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </main>

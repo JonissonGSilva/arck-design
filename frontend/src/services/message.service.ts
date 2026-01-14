@@ -176,6 +176,17 @@ export const messageService = {
     if (text.length <= maxLength) return text
     return text.substring(0, maxLength).trim() + '...'
   },
+
+  /**
+   * Deletar conversa
+   */
+  async deleteConversation(conversationId: string): Promise<ApiResponse<{ message: string }>> {
+    if (!conversationId || typeof conversationId !== 'string') {
+      return { error: 'ID da conversa inválido' }
+    }
+
+    return api.delete<{ message: string }>(`/messages/conversations/${encodeURIComponent(conversationId)}`)
+  },
 }
 
 

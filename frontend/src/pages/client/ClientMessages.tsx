@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Chat, Person, Email, Send } from '@mui/icons-material'
+import { Trash2 } from 'lucide-react'
 import { useToast } from '../../contexts/ToastContext'
 import { messageService } from '../../services'
 import LoadingButton from '../../components/common/LoadingButton'
@@ -32,6 +33,7 @@ const ClientMessages: React.FC = () => {
   const [isInitializingConversation, setIsInitializingConversation] = useState(false)
   const [messages, setMessages] = useState<any[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [deletingConversation, setDeletingConversation] = useState<string | null>(null)
 
   useEffect(() => {
     loadConversations()
@@ -97,9 +99,9 @@ const ClientMessages: React.FC = () => {
               name: otherUser.name || otherUser.displayName || 'Arquiteto',
               avatar: otherUser.avatar || undefined
             },
-            lastMessage: conv.lastMessage ? {
-              content: conv.lastMessage.text || conv.lastMessage.content || '',
-              createdAt: conv.lastMessage.createdAt || conv.lastMessageAt || new Date().toISOString()
+            lastMessage: conv.lastMessageData ? {
+              content: conv.lastMessageData.text || conv.lastMessageData.content || '',
+              createdAt: conv.lastMessageData.createdAt || conv.lastMessageAt || new Date().toISOString()
             } : undefined,
             unreadCount: typeof conv.unreadCount === 'object' 
               ? (conv.unreadCount.client || conv.unreadCount[conv.id] || 0)
@@ -154,11 +156,11 @@ const ClientMessages: React.FC = () => {
       setConversations(mappedConversations)
       
       // Verificar se já existe uma conversa com este arquiteto
-      // Usar comparação por ID do outro usuário
+      // Usar comparação por ID do outro usuário (arquiteto)
       const existingConversation = mappedConversations.find(
         (conv) => {
           const otherUserId = conv.otherUser?.id
-          return otherUserId === architectId
+          return otherUserId && otherUserId === architectId
         }
       )
 
@@ -166,7 +168,9 @@ const ClientMessages: React.FC = () => {
         // Se já existe, apenas selecionar e pré-preencher mensagem
         setSelectedConversation(existingConversation.id)
         setMessageText(initialMessage)
-        showToast('Mensagem pré-preenchida! Você pode editar antes de enviar.', 'info')
+        showToast('Conversa encontrada! Mensagem pré-preenchida. Você pode editar antes de enviar.', 'info')
+        setIsInitializingConversation(false)
+        return // Não criar nova conversa
       } else {
         // Criar nova conversa apenas se não existir
         const conversationResponse = await messageService.startConversation(architectId)
@@ -252,8 +256,8 @@ const ClientMessages: React.FC = () => {
         return
       }
 
-      // Sanitizar mensagem antes de enviar
-      const sanitizedMessage = sanitizeText(messageText.trim(), ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
+      // Sanitizar mensagem antes de enviar (permitir acentos e caracteres especiais)
+      const sanitizedMessage = sanitizeText(messageText.trim(), ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')', '[', ']', '{', '}', '/', '\\', '@', '#', '$', '%', '*', '+', '=', '_', '|', '~', '`', '^', '´', '°', 'ª', 'º'])
       const limitedMessage = limitLength(sanitizedMessage, 5000) // Limite de mensagem
 
       const response = await messageService.sendMessage(conversation.otherUser?.id || '', limitedMessage)
@@ -276,6 +280,38 @@ const ClientMessages: React.FC = () => {
       showToast('Erro ao enviar mensagem', 'error')
     } finally {
       setSendingMessage(false)
+    }
+  }
+
+  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevenir seleção da conversa
+    
+    if (!window.confirm('Tem certeza que deseja deletar esta conversa? Todas as mensagens serão perdidas.')) {
+      return
+    }
+
+    setDeletingConversation(conversationId)
+    try {
+      const response = await messageService.deleteConversation(conversationId)
+      if (response.data) {
+        showToast('Conversa deletada com sucesso', 'success')
+        
+        // Remover da lista local
+        setConversations(prev => prev.filter(c => c.id !== conversationId))
+        
+        // Se a conversa deletada estava selecionada, limpar seleção
+        if (selectedConversation === conversationId) {
+          setSelectedConversation(null)
+          setMessages([])
+        }
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao deletar conversa:', error)
+      showToast('Erro ao deletar conversa', 'error')
+    } finally {
+      setDeletingConversation(null)
     }
   }
 
@@ -309,7 +345,7 @@ const ClientMessages: React.FC = () => {
               <button
                 key={conv.id}
                 onClick={() => setSelectedConversation(conv.id)}
-                className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition border-b border-gray-100 text-left ${
+                className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition border-b border-gray-100 text-left relative group ${
                   selectedConversation === conv.id ? 'bg-primary-50' : ''
                 }`}
               >
@@ -338,6 +374,17 @@ const ClientMessages: React.FC = () => {
                     {conv.unreadCount}
                   </span>
                 )}
+                <button
+                  onClick={(e) => handleDeleteConversation(conv.id, e)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-opacity"
+                  title="Deletar conversa"
+                >
+                  {deletingConversation === conv.id ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                  ) : (
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  )}
+                </button>
               </button>
             ))}
           </div>
@@ -358,29 +405,43 @@ const ClientMessages: React.FC = () => {
             ) : (
               <>
                 {/* Header do chat */}
-                <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedConversation(null)}
+                      className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+                    >
+                      ←
+                    </button>
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      {conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar ? (
+                        <img 
+                          src={conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar} 
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Person className="text-gray-600" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Conversa'}
+                      </p>
+                    </div>
+                  </div>
                   <button
-                    onClick={() => setSelectedConversation(null)}
-                    className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+                    onClick={() => {
+                      const conv = conversations.find(c => c.id === selectedConversation)
+                      if (conv) {
+                        handleDeleteConversation(conv.id, {} as React.MouseEvent)
+                      }
+                    }}
+                    className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                    title="Deletar conversa"
                   >
-                    ←
+                    <Trash2 className="h-5 w-5 text-red-600" />
                   </button>
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                    {conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar ? (
-                      <img 
-                        src={conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar} 
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Person className="text-gray-600" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Conversa'}
-                    </p>
-                  </div>
                 </div>
 
                 {/* Mensagens */}
@@ -434,9 +495,9 @@ const ClientMessages: React.FC = () => {
                 </div>
 
                 {/* Input */}
-                <div className="p-4 border-t border-gray-200 bg-white">
+                <div className="p-3 md:p-4 border-t border-gray-200 bg-white">
                   {messageText && searchParams.get('initialMessage') && (
-                    <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs md:text-sm text-blue-700">
                       💬 Mensagem pré-preenchida. Você pode editar antes de enviar.
                     </div>
                   )}
@@ -444,7 +505,8 @@ const ClientMessages: React.FC = () => {
                     <textarea
                       value={messageText}
                       onChange={(e) => {
-                        const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
+                        // Para mensagens, permitir todos os caracteres acentuados e especiais comuns
+                        const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')', '[', ']', '{', '}', '/', '\\', '@', '#', '$', '%', '*', '+', '=', '_', '|', '~', '`', '^', '´', '°', 'ª', 'º'])
                         setMessageText(limitLength(sanitized, 5000))
                       }}
                       onKeyDown={(e) => {
@@ -456,8 +518,8 @@ const ClientMessages: React.FC = () => {
                       placeholder="Digite sua mensagem..."
                       disabled={sendingMessage || isInitializingConversation}
                       maxLength={5000}
-                      rows={Math.min(messageText.split('\n').length, 4) || 1}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none"
+                      rows={Math.min(Math.max(messageText.split('\n').length, 2), 5) || 2}
+                      className="flex-1 px-3 md:px-4 py-2.5 md:py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none min-h-[60px] max-h-[120px]"
                     />
                     <LoadingButton
                       onClick={handleSendMessage}
@@ -465,9 +527,9 @@ const ClientMessages: React.FC = () => {
                       variant="primary"
                       size="md"
                       disabled={!messageText.trim()}
-                      icon={<Send className="h-5 w-5" />}
+                      icon={<Send className="h-4 w-4 md:h-5 md:w-5" />}
                     >
-                      <span className="hidden sm:inline">Enviar</span>
+                      <span className="hidden sm:inline text-sm">Enviar</span>
                     </LoadingButton>
                   </div>
                 </div>
