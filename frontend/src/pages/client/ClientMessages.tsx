@@ -237,19 +237,25 @@ const ClientMessages: React.FC = () => {
     }
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString)
     const now = new Date()
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    
+    const diff = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24))
+
     if (diffDays === 0) {
       return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     } else if (diffDays === 1) {
       return 'Ontem'
     } else if (diffDays < 7) {
-      return date.toLocaleDateString('pt-BR', { weekday: 'short' })
+      return date.toLocaleDateString('pt-BR', { weekday: 'long' })
+    } else {
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+      })
     }
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   }
 
   const handleSendMessage = async () => {
@@ -434,7 +440,7 @@ const ClientMessages: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+        </div>
 
         {/* Área de Chat - oculta no mobile quando nenhuma conversa está selecionada */}
         <div className={`flex-1 flex flex-col min-h-0 ${
@@ -493,8 +499,8 @@ const ClientMessages: React.FC = () => {
                     </button>
                   </div>
 
-                {/* Mensagens */}
-                <div className="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
+                  {/* Mensagens - estilo Facebook mobile */}
+                  <div className="flex-1 p-3 md:p-4 overflow-y-auto bg-gray-50 md:bg-gray-50 min-h-0">
                   {loadingMessages ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
@@ -518,18 +524,18 @@ const ClientMessages: React.FC = () => {
                         return (
                           <div
                             key={message.id}
-                            className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                            className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'} mb-1`}
                           >
                             <div
-                              className={`max-w-md px-4 py-2 rounded-2xl ${
+                              className={`max-w-[85%] md:max-w-md px-3 md:px-4 py-2 md:py-2.5 rounded-2xl ${
                                 isMyMessage
-                                  ? 'bg-primary-600 text-white'
-                                  : 'bg-white text-gray-900 border border-gray-200'
+                                  ? 'bg-primary-600 text-white rounded-tr-sm'
+                                  : 'bg-white text-gray-900 border border-gray-200 rounded-tl-sm'
                               }`}
                             >
-                              <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                              <p className="text-sm md:text-sm whitespace-pre-wrap break-words">{message.text}</p>
                               <p
-                                className={`text-xs mt-1 ${
+                                className={`text-[10px] md:text-xs mt-1 ${
                                   isMyMessage ? 'text-primary-100' : 'text-gray-500'
                                 }`}
                               >
@@ -539,59 +545,62 @@ const ClientMessages: React.FC = () => {
                           </div>
                         )
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
                   )}
                 </div>
 
-                {/* Input */}
-                <div className="p-3 md:p-4 border-t border-gray-200 bg-white">
-                  {messageText && searchParams.get('initialMessage') && (
-                    <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs md:text-sm text-blue-700">
-                      💬 Mensagem pré-preenchida. Você pode editar antes de enviar.
+                  {/* Input - estilo Facebook mobile */}
+                  <div className="p-2.5 md:p-4 border-t border-gray-200 bg-white">
+                    {messageText && searchParams.get('initialMessage') && (
+                      <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-xs md:text-sm text-blue-700">
+                        💬 Mensagem pré-preenchida. Você pode editar antes de enviar.
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-end">
+                      <textarea
+                        value={messageText}
+                        onChange={(e) => {
+                          // Para mensagens, permitir todos os caracteres acentuados e especiais comuns
+                          const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')', '[', ']', '{', '}', '/', '\\', '@', '#', '$', '%', '*', '+', '=', '_', '|', '~', '`', '^', '´', '°', 'ª', 'º'])
+                          setMessageText(limitLength(sanitized, 5000))
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey && !sendingMessage && messageText.trim()) {
+                            e.preventDefault()
+                            handleSendMessage()
+                          }
+                        }}
+                        placeholder="Digite uma mensagem..."
+                        disabled={sendingMessage || isInitializingConversation}
+                        maxLength={5000}
+                        rows={Math.min(Math.max(messageText.split('\n').length, 1), 4) || 1}
+                        className="flex-1 px-3 md:px-4 py-2 md:py-2.5 text-sm border border-gray-300 rounded-full md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none min-h-[40px] md:min-h-[60px] max-h-[100px] md:max-h-[120px]"
+                      />
+                      <LoadingButton
+                        onClick={handleSendMessage}
+                        loading={sendingMessage}
+                        variant="primary"
+                        size="md"
+                        disabled={!messageText.trim()}
+                        icon={<Send className="h-4 w-4 md:h-5 md:w-5" />}
+                        className="rounded-full md:rounded-lg flex-shrink-0"
+                      >
+                        <span className="hidden md:inline text-sm">Enviar</span>
+                      </LoadingButton>
                     </div>
-                  )}
-                  <div className="flex gap-2 items-end">
-                    <textarea
-                      value={messageText}
-                      onChange={(e) => {
-                        // Para mensagens, permitir todos os caracteres acentuados e especiais comuns
-                        const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')', '[', ']', '{', '}', '/', '\\', '@', '#', '$', '%', '*', '+', '=', '_', '|', '~', '`', '^', '´', '°', 'ª', 'º'])
-                        setMessageText(limitLength(sanitized, 5000))
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && !sendingMessage && messageText.trim()) {
-                          e.preventDefault()
-                          handleSendMessage()
-                        }
-                      }}
-                      placeholder="Digite sua mensagem..."
-                      disabled={sendingMessage || isInitializingConversation}
-                      maxLength={5000}
-                      rows={Math.min(Math.max(messageText.split('\n').length, 2), 5) || 2}
-                      className="flex-1 px-3 md:px-4 py-2.5 md:py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none min-h-[60px] max-h-[120px]"
-                    />
-                    <LoadingButton
-                      onClick={handleSendMessage}
-                      loading={sendingMessage}
-                      variant="primary"
-                      size="md"
-                      disabled={!messageText.trim()}
-                      icon={<Send className="h-4 w-4 md:h-5 md:w-5" />}
-                    >
-                      <span className="hidden sm:inline text-sm">Enviar</span>
-                    </LoadingButton>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-            <Email className="text-6xl mb-4 text-gray-400" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Selecione uma conversa</h3>
-            <p className="text-gray-500">Escolha uma conversa na lista para ver as mensagens</p>
-          </div>
-        )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 hidden md:flex">
+              <Email sx={{ fontSize: 64 }} className="mb-4 text-gray-400" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Selecione uma conversa</h3>
+              <p className="text-gray-500">Escolha uma conversa na lista para ver as mensagens</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
