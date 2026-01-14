@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext'
 import { isStrongPassword } from '../services'
 import type { UserRole } from '../types/api'
 import LoadingButton from '../components/common/LoadingButton'
+import { sanitizeInput, validateEmail, INPUT_LIMITS, limitLength } from '../utils/inputUtils'
 
 const Signup = () => {
   const { showToast } = useToast()
@@ -36,13 +37,34 @@ const Signup = () => {
     setError('')
 
     // Validações
-    if (formData.name.trim().length < 2) {
+    const sanitizedName = sanitizeInput(formData.name.trim())
+    if (sanitizedName.length < 2) {
       setError('O nome deve ter pelo menos 2 caracteres')
+      return
+    }
+    
+    if (sanitizedName.length > INPUT_LIMITS.NAME) {
+      setError(`O nome deve ter no máximo ${INPUT_LIMITS.NAME} caracteres`)
+      return
+    }
+
+    if (!validateEmail(formData.email)) {
+      setError('E-mail inválido')
       return
     }
 
     if (!passwordValidation.valid) {
       setError('A senha não atende aos requisitos de segurança')
+      return
+    }
+    
+    if (formData.password.length < INPUT_LIMITS.PASSWORD_MIN) {
+      setError(`A senha deve ter no mínimo ${INPUT_LIMITS.PASSWORD_MIN} caracteres`)
+      return
+    }
+    
+    if (formData.password.length > INPUT_LIMITS.PASSWORD_MAX) {
+      setError(`A senha deve ter no máximo ${INPUT_LIMITS.PASSWORD_MAX} caracteres`)
       return
     }
 
@@ -86,7 +108,28 @@ const Signup = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    let sanitizedValue = value
+    
+    // Sanitização e limites baseados no campo
+    switch (name) {
+      case 'name':
+        sanitizedValue = sanitizeInput(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.NAME)
+        break
+      case 'email':
+        sanitizedValue = sanitizeInput(value.toLowerCase().trim())
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.EMAIL)
+        break
+      case 'password':
+      case 'confirmPassword':
+        // Senha não deve ser sanitizada (pode conter caracteres especiais)
+        sanitizedValue = limitLength(value, INPUT_LIMITS.PASSWORD_MAX)
+        break
+      default:
+        sanitizedValue = sanitizeInput(value)
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }))
   }
 
   return (
@@ -182,6 +225,7 @@ const Signup = () => {
                   required
                   value={formData.name}
                   onChange={handleChange}
+                  maxLength={INPUT_LIMITS.NAME}
                   className="w-full pl-10 pr-4 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
                   placeholder="Digite seu nome completo"
                 />
@@ -202,6 +246,7 @@ const Signup = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
+                  maxLength={INPUT_LIMITS.EMAIL}
                   className="w-full pl-10 pr-4 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
                   placeholder="Digite seu e-mail"
                 />
@@ -222,6 +267,8 @@ const Signup = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
+                  minLength={INPUT_LIMITS.PASSWORD_MIN}
+                  maxLength={INPUT_LIMITS.PASSWORD_MAX}
                   className="w-full pl-10 pr-12 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
                   placeholder="Crie uma senha forte"
                 />
@@ -275,6 +322,8 @@ const Signup = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  minLength={INPUT_LIMITS.PASSWORD_MIN}
+                  maxLength={INPUT_LIMITS.PASSWORD_MAX}
                   className={`w-full pl-10 pr-12 py-3 bg-stone-900/50 border text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500 ${
                     formData.confirmPassword && formData.password !== formData.confirmPassword
                       ? 'border-red-500'

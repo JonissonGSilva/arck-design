@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { projectService } from '../../services'
 import { useToast } from '../../contexts/ToastContext'
 import type { Project } from '../../types/api'
+import { sanitizeInput, limitLength } from '../../utils/inputUtils'
 
 const Galleries = () => {
   const navigate = useNavigate()
@@ -229,7 +230,11 @@ const Galleries = () => {
               type="text"
               placeholder="Buscar projetos..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                const sanitized = sanitizeInput(e.target.value)
+                setSearchTerm(limitLength(sanitized, 100))
+              }}
+              maxLength={100}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
           </div>

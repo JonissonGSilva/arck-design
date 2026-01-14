@@ -20,7 +20,7 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, isLoading } = useNotifications()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
-  const [markingAsReadId, setMarkingAsReadId] = useState<string | null>(null)
+  const [, setMarkingAsReadId] = useState<string | null>(null)
   const [deletingNotificationId, setDeletingNotificationId] = useState<string | null>(null)
   const [markingAllAsRead, setMarkingAllAsRead] = useState(false)
   const notificationRef = useRef<HTMLDivElement>(null)

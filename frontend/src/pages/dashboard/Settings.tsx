@@ -6,6 +6,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { settingsService, type NotificationSettings, type Preferences, type PrivacySettings, type UserProfile } from '../../services/settings.service'
 import LoadingButton from '../../components/common/LoadingButton'
+import { sanitizeInput, sanitizeText, sanitizeUrl, maskPhone, maskCNPJ, INPUT_LIMITS, limitLength } from '../../utils/inputUtils'
 
 const Settings = () => {
   const navigate = useNavigate()
@@ -322,7 +323,11 @@ const Settings = () => {
                   <input
                     type="text"
                     value={profile.name}
-                    onChange={(e) => setProfile({...profile, name: e.target.value})}
+                    onChange={(e) => {
+                      const sanitized = sanitizeInput(e.target.value)
+                      setProfile({...profile, name: limitLength(sanitized, INPUT_LIMITS.NAME)})
+                    }}
+                    maxLength={INPUT_LIMITS.NAME}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -349,7 +354,12 @@ const Settings = () => {
                   <input
                     type="tel"
                     value={profile.phone || ''}
-                    onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                    onChange={(e) => {
+                      const masked = maskPhone(e.target.value)
+                      setProfile({...profile, phone: limitLength(masked, INPUT_LIMITS.PHONE)})
+                    }}
+                    maxLength={INPUT_LIMITS.PHONE}
+                    placeholder="(00) 00000-0000"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -361,10 +371,17 @@ const Settings = () => {
                 </label>
                 <textarea
                   value={profile.bio || ''}
-                  onChange={(e) => setProfile({...profile, bio: e.target.value})}
+                  onChange={(e) => {
+                    const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-'])
+                    setProfile({...profile, bio: limitLength(sanitized, INPUT_LIMITS.BIO)})
+                  }}
+                  maxLength={INPUT_LIMITS.BIO}
                   rows={4}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {(profile.bio || '').length}/{INPUT_LIMITS.BIO} caracteres
+                </p>
               </div>
             </div>
           )}
@@ -381,7 +398,11 @@ const Settings = () => {
                   <input
                     type="text"
                     value={profile.companyName || ''}
-                    onChange={(e) => setProfile({...profile, companyName: e.target.value})}
+                    onChange={(e) => {
+                      const sanitized = sanitizeInput(e.target.value)
+                      setProfile({...profile, companyName: limitLength(sanitized, INPUT_LIMITS.COMPANY_NAME)})
+                    }}
+                    maxLength={INPUT_LIMITS.COMPANY_NAME}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -393,7 +414,12 @@ const Settings = () => {
                   <input
                     type="text"
                     value={profile.cnpj || ''}
-                    onChange={(e) => setProfile({...profile, cnpj: e.target.value})}
+                    onChange={(e) => {
+                      const masked = maskCNPJ(e.target.value)
+                      setProfile({...profile, cnpj: limitLength(masked, INPUT_LIMITS.CNPJ)})
+                    }}
+                    maxLength={INPUT_LIMITS.CNPJ}
+                    placeholder="00.000.000/0000-00"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -405,7 +431,11 @@ const Settings = () => {
                   <input
                     type="text"
                     value={profile.address || ''}
-                    onChange={(e) => setProfile({...profile, address: e.target.value})}
+                    onChange={(e) => {
+                      const sanitized = sanitizeText(e.target.value, [' ', ',', '.', '-', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+                      setProfile({...profile, address: limitLength(sanitized, INPUT_LIMITS.ADDRESS)})
+                    }}
+                    maxLength={INPUT_LIMITS.ADDRESS}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -417,7 +447,11 @@ const Settings = () => {
                   <input
                     type="url"
                     value={profile.website || ''}
-                    onChange={(e) => setProfile({...profile, website: e.target.value})}
+                    onChange={(e) => {
+                      const sanitized = sanitizeUrl(e.target.value)
+                      setProfile({...profile, website: limitLength(sanitized, INPUT_LIMITS.WEBSITE)})
+                    }}
+                    maxLength={INPUT_LIMITS.WEBSITE}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>

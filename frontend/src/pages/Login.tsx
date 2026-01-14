@@ -4,6 +4,7 @@ import { Mail, Lock, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle } fro
 import { useAuth } from '../contexts/AuthContext'
 import type { UserRole } from '../types/api'
 import LoadingButton from '../components/common/LoadingButton'
+import { sanitizeInput, validateEmail, INPUT_LIMITS, limitLength } from '../utils/inputUtils'
 
 const Login = () => {
   // DEBUG: Log quando o componente renderiza
@@ -50,13 +51,30 @@ const Login = () => {
     console.log('=== FORM SUBMITTED ===')
     setError('')
 
-    if (!email.trim()) {
+    const sanitizedEmail = sanitizeInput(email.toLowerCase().trim())
+    
+    if (!sanitizedEmail) {
       setError('Digite seu e-mail')
+      return
+    }
+    
+    if (!validateEmail(sanitizedEmail)) {
+      setError('E-mail inválido')
+      return
+    }
+    
+    if (sanitizedEmail.length > INPUT_LIMITS.EMAIL) {
+      setError(`E-mail muito longo (máximo ${INPUT_LIMITS.EMAIL} caracteres)`)
       return
     }
 
     if (!password) {
       setError('Digite sua senha')
+      return
+    }
+    
+    if (password.length > INPUT_LIMITS.PASSWORD_MAX) {
+      setError(`Senha muito longa (máximo ${INPUT_LIMITS.PASSWORD_MAX} caracteres)`)
       return
     }
 
@@ -195,7 +213,11 @@ const Login = () => {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    const sanitized = sanitizeInput(e.target.value.toLowerCase().trim())
+                    setEmail(limitLength(sanitized, INPUT_LIMITS.EMAIL))
+                  }}
+                  maxLength={INPUT_LIMITS.EMAIL}
                   className="w-full pl-10 pr-4 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
                   placeholder="Digite seu e-mail"
                 />
@@ -214,7 +236,8 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(limitLength(e.target.value, INPUT_LIMITS.PASSWORD_MAX))}
+                  maxLength={INPUT_LIMITS.PASSWORD_MAX}
                   className="w-full pl-10 pr-12 py-3 bg-stone-900/50 border border-stone-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder-stone-500"
                   placeholder="Digite sua senha"
                 />

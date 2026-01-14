@@ -6,6 +6,7 @@ import type { Service, CreateServiceRequest, ServiceCategory, ServiceStats } fro
 import { useToast } from '../../contexts/ToastContext'
 import LoadingButton from '../../components/common/LoadingButton'
 import ConfirmModal from '../../components/common/ConfirmModal'
+import { sanitizeInput, sanitizeText, limitLength } from '../../utils/inputUtils'
 
 const Services = () => {
   const navigate = useNavigate()
@@ -429,7 +430,11 @@ const Services = () => {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => {
+                    const sanitized = sanitizeInput(e.target.value)
+                    setFormData(prev => ({ ...prev, name: limitLength(sanitized, 100) }))
+                  }}
+                  maxLength={100}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Ex: Projeto Arquitetônico Residencial"
                 />
@@ -441,11 +446,18 @@ const Services = () => {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  onChange={(e) => {
+                    const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';'])
+                    setFormData(prev => ({ ...prev, description: limitLength(sanitized, 1000) }))
+                  }}
+                  maxLength={1000}
                   rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Descreva o serviço..."
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {(formData.description || '').length}/1000 caracteres
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -469,7 +481,11 @@ const Services = () => {
                   <input
                     type="text"
                     value={formData.duration}
-                    onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+                    onChange={(e) => {
+                      const sanitized = sanitizeText(e.target.value, [' ', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'm', 'e', 's', 'a', 'o', 'd', 'i', 'a', 'h', 'r', 'M', 'E', 'S', 'A', 'O', 'D', 'I', 'A', 'H', 'R'])
+                      setFormData(prev => ({ ...prev, duration: limitLength(sanitized, 50) }))
+                    }}
+                    maxLength={50}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Ex: 2-3 meses"
                   />
@@ -501,8 +517,12 @@ const Services = () => {
                   <input
                     type="text"
                     value={newFeature}
-                    onChange={(e) => setNewFeature(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = sanitizeInput(e.target.value)
+                      setNewFeature(limitLength(sanitized, 100))
+                    }}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
+                    maxLength={100}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Ex: Projeto executivo"
                   />

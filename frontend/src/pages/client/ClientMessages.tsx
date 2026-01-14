@@ -4,6 +4,7 @@ import { Chat, Person, Email, Send } from '@mui/icons-material'
 import { useToast } from '../../contexts/ToastContext'
 import { messageService } from '../../services'
 import LoadingButton from '../../components/common/LoadingButton'
+import { sanitizeText, limitLength } from '../../utils/inputUtils'
 
 interface Conversation {
   id: string
@@ -143,7 +144,11 @@ const ClientMessages: React.FC = () => {
         return
       }
 
-      const response = await messageService.sendMessage(conversation.otherUser.id, messageText.trim())
+      // Sanitizar mensagem antes de enviar
+      const sanitizedMessage = sanitizeText(messageText.trim(), ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
+      const limitedMessage = limitLength(sanitizedMessage, 5000) // Limite de mensagem
+
+      const response = await messageService.sendMessage(conversation.otherUser.id, limitedMessage)
       if (response.data) {
         setMessageText('')
         loadConversations()
@@ -278,7 +283,10 @@ const ClientMessages: React.FC = () => {
                   <div className="flex gap-2">
                     <textarea
                       value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
+                      onChange={(e) => {
+                        const sanitized = sanitizeText(e.target.value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
+                        setMessageText(limitLength(sanitized, 5000))
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey && !sendingMessage && messageText.trim()) {
                           e.preventDefault()
@@ -286,7 +294,8 @@ const ClientMessages: React.FC = () => {
                         }
                       }}
                       placeholder="Digite sua mensagem..."
-                      disabled={sendingMessage}
+                      disabled={sendingMessage || isInitializingConversation}
+                      maxLength={5000}
                       rows={Math.min(messageText.split('\n').length, 4) || 1}
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none"
                     />

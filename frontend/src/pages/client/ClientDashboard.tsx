@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderTree, Calendar, Building2, ArrowRight, Plus, Loader2, Heart, Search, MessageSquare } from 'lucide-react'
+import { FolderTree, Calendar, ArrowRight, Plus, Loader2, Heart, Search, MessageSquare } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../../services'
 import type { ClientStats, ClientProject, UpcomingEvent } from '../../services/dashboard.service'

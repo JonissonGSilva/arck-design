@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { messageService } from '../../services'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingButton from '../../components/common/LoadingButton'
+import { sanitizeText, limitLength } from '../../utils/inputUtils'
 
 interface Contact {
   id: string
@@ -109,7 +110,11 @@ const Chat = () => {
       return
     }
 
-    const response = await messageService.sendMessage(selectedContact, messageText.trim())
+    // Sanitizar mensagem antes de enviar
+    const sanitizedMessage = sanitizeText(messageText.trim(), ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
+    const limitedMessage = limitLength(sanitizedMessage, 5000) // Limite de mensagem
+
+    const response = await messageService.sendMessage(selectedContact, limitedMessage)
     
     if (response.data) {
       // Adicionar mensagem à lista
@@ -181,6 +186,11 @@ const Chat = () => {
               <input
                 type="text"
                 placeholder="Buscar conversas..."
+                onChange={() => {
+                  // TODO: Implementar busca
+                  // Por enquanto apenas aceita input
+                }}
+                maxLength={100}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
@@ -307,10 +317,14 @@ const Chat = () => {
                   <input
                     type="text"
                     value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = sanitizeText(e.target.value, [' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
+                      setMessageText(limitLength(sanitized, 5000))
+                    }}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="Digite sua mensagem..."
                     disabled={sendingMessage}
+                    maxLength={5000}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                   />
                   <LoadingButton

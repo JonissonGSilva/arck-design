@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { profileService, DEFAULT_CUSTOMIZATION } from '../../services'
 import type { ProfileCustomization, PublicProfile as ProfileServicePublicProfile } from '../../services/profile.service'
 import LoadingButton from '../../components/common/LoadingButton'
+import { sanitizeInput, sanitizeText, sanitizeUrl, maskPhone, maskCAU, validateUsername, validateUrl, validatePhone, unmask, INPUT_LIMITS, limitLength } from '../../utils/inputUtils'
 
 type PublicProfileType = ProfileServicePublicProfile
 import LayoutCustomizer from '../../components/profile/LayoutCustomizer'
@@ -139,10 +140,164 @@ const PublicProfile = () => {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    let sanitizedValue = value
+    
+    // Aplicar sanitização e máscaras baseado no campo
+    switch (name) {
+      case 'displayName':
+        sanitizedValue = sanitizeInput(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.NAME)
+        break
+      case 'username':
+        // Username: apenas letras minúsculas, números, pontos e underscores
+        sanitizedValue = value.toLowerCase().replace(/[^a-z0-9._]/g, '')
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.USERNAME)
+        break
+      case 'bio':
+        sanitizedValue = sanitizeText(value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';'])
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.BIO)
+        break
+      case 'location':
+        sanitizedValue = sanitizeText(value, [',', ' ', '-'])
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.LOCATION)
+        break
+      case 'specialty':
+        sanitizedValue = sanitizeInput(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.SPECIALTY)
+        break
+      case 'experience':
+        sanitizedValue = sanitizeText(value, ['+', ' ', 'a', 'n', 'o', 's', 'A', 'N', 'O', 'S'])
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.EXPERIENCE)
+        break
+      case 'cau':
+        sanitizedValue = maskCAU(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.CAU)
+        break
+      case 'website':
+        sanitizedValue = sanitizeUrl(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.WEBSITE)
+        break
+      case 'email':
+        // Email não deve ser editado aqui, mas sanitizar caso seja
+        sanitizedValue = sanitizeInput(value.toLowerCase().trim())
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.EMAIL)
+        break
+      case 'phone':
+        sanitizedValue = maskPhone(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.PHONE)
+        break
+      case 'instagram':
+        sanitizedValue = sanitizeInput(value.replace(/[^a-zA-Z0-9._@]/g, ''))
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.INSTAGRAM)
+        break
+      case 'facebook':
+        sanitizedValue = sanitizeInput(value.replace(/[^a-zA-Z0-9._]/g, ''))
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.FACEBOOK)
+        break
+      case 'instagramUrl':
+      case 'facebookUrl':
+        sanitizedValue = sanitizeUrl(value)
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.WEBSITE)
+        break
+      case 'education':
+        sanitizedValue = sanitizeText(value, [' ', ',', '.', '-', '/'])
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.EDUCATION)
+        break
+      case 'awards':
+        sanitizedValue = sanitizeText(value, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';'])
+        sanitizedValue = limitLength(sanitizedValue, INPUT_LIMITS.AWARDS)
+        break
+      default:
+        sanitizedValue = sanitizeInput(value)
+    }
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: sanitizedValue,
     })
+  }
+
+  const handleAvatarClick = () => {
+    avatarInputRef.current?.click()
+  }
+
+  const handleCoverClick = () => {
+    coverInputRef.current?.click()
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      showToast('Por favor, selecione um arquivo de imagem', 'error')
+      return
+    }
+
+    // Validar tamanho (máximo 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('A imagem deve ter no máximo 10MB', 'error')
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      const response = await profileService.uploadAvatar(file)
+      if (response.data?.url) {
+        setFormData(prev => ({ ...prev, avatar: response.data!.url }))
+        showToast('Avatar atualizado com sucesso!', 'success')
+      } else {
+        showToast(response.error || 'Erro ao fazer upload do avatar', 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao fazer upload do avatar:', error)
+      showToast('Erro ao fazer upload do avatar', 'error')
+    } finally {
+      setUploadingAvatar(false)
+      // Limpar o input para permitir selecionar o mesmo arquivo novamente
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      showToast('Por favor, selecione um arquivo de imagem', 'error')
+      return
+    }
+
+    // Validar tamanho (máximo 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('A imagem deve ter no máximo 10MB', 'error')
+      return
+    }
+
+    setUploadingCover(true)
+    try {
+      const response = await profileService.uploadCover(file)
+      if (response.data?.url) {
+        setFormData(prev => ({ ...prev, coverImage: response.data!.url }))
+        showToast('Imagem de capa atualizada com sucesso!', 'success')
+      } else {
+        showToast(response.error || 'Erro ao fazer upload da imagem de capa', 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem de capa:', error)
+      showToast('Erro ao fazer upload da imagem de capa', 'error')
+    } finally {
+      setUploadingCover(false)
+      // Limpar o input para permitir selecionar o mesmo arquivo novamente
+      if (coverInputRef.current) {
+        coverInputRef.current.value = ''
+      }
+    }
   }
 
   const handleAddSpecialty = () => {
@@ -181,21 +336,39 @@ const PublicProfile = () => {
         setIsSaving(false)
         return
       }
+      
+      if (!validateUsername(formData.username)) {
+        showToast('Nome de usuário inválido. Use apenas letras minúsculas, números, pontos e underscores (3-30 caracteres)', 'error')
+        setIsSaving(false)
+        return
+      }
+      
+      if (formData.website && !validateUrl(formData.website)) {
+        showToast('URL do website inválida', 'error')
+        setIsSaving(false)
+        return
+      }
+      
+      if (formData.phone && !validatePhone(formData.phone)) {
+        showToast('Telefone inválido. Use o formato (00) 00000-0000', 'error')
+        setIsSaving(false)
+        return
+      }
 
-      // Montar objeto de perfil
+      // Montar objeto de perfil (dados já sanitizados pelo handleChange, mas garantir antes de enviar)
       const profileData: Partial<PublicProfileType> = {
-        displayName: formData.displayName,
-        username: formData.username,
-        bio: formData.bio,
-        specialty: formData.specialty,
-        experience: formData.experience,
-        cau: formData.cau,
-        website: formData.website,
-        email: formData.email,
-        phone: formData.phone,
-        specialties: formData.specialties,
-        awards: formData.awards,
-        education: formData.education,
+        displayName: sanitizeInput(formData.displayName),
+        username: formData.username.toLowerCase().trim(),
+        bio: sanitizeText(formData.bio, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';']),
+        specialty: sanitizeInput(formData.specialty),
+        experience: sanitizeText(formData.experience, ['+', ' ', 'a', 'n', 'o', 's', 'A', 'N', 'O', 'S']),
+        cau: sanitizeInput(formData.cau),
+        website: formData.website ? sanitizeUrl(formData.website) : undefined,
+        email: sanitizeInput(formData.email.toLowerCase().trim()),
+        phone: formData.phone ? unmask(formData.phone) : undefined,
+        specialties: formData.specialties.map(s => sanitizeInput(s)),
+        awards: sanitizeText(formData.awards, ['\n', ' ', '.', ',', '!', '?', '-', ':', ';']),
+        education: sanitizeText(formData.education, [' ', ',', '.', '-', '/']),
         customization,
         location: formData.location ? {
           address: {
@@ -307,9 +480,32 @@ const PublicProfile = () => {
               </h2>
               
               <div className="relative">
+                {/* Hidden file inputs */}
+                <input
+                  type="file"
+                  ref={coverInputRef}
+                  accept="image/*"
+                  onChange={handleCoverChange}
+                  className="hidden"
+                />
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+
                 {/* Cover Image */}
                 <div className="relative h-48 md:h-56 bg-gray-100">
-                  {formData.coverImage ? (
+                  {uploadingCover ? (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-2"></div>
+                        <p className="text-sm text-gray-600">Enviando imagem...</p>
+                      </div>
+                    </div>
+                  ) : formData.coverImage ? (
                     <img
                       src={formData.coverImage}
                       alt="Cover"
@@ -322,11 +518,13 @@ const PublicProfile = () => {
                   )}
                   <button
                     type="button"
-                    className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                    onClick={handleCoverClick}
+                    disabled={uploadingCover}
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-2 text-white">
                       <ApartmentIcon sx={{ fontSize: 20 }} />
-                      <span className="font-medium text-sm">Alterar Capa</span>
+                      <span className="font-medium text-sm">{formData.coverImage ? 'Alterar Capa' : 'Adicionar Capa'}</span>
                     </div>
                   </button>
                   <p className="absolute bottom-2 right-4 text-xs text-white/80 bg-black/30 px-2 py-1 rounded">
@@ -338,7 +536,11 @@ const PublicProfile = () => {
                 <div className="relative px-4 md:px-6 pb-4 md:pb-6">
                   <div className="relative -mt-12 md:-mt-16 inline-block">
                     <div className="relative w-24 h-24 md:w-32 md:h-32">
-                      {formData.avatar ? (
+                      {uploadingAvatar ? (
+                        <div className="w-full h-full rounded-full border-4 border-white shadow-xl bg-gray-100 flex items-center justify-center">
+                          <div className="animate-spin h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full"></div>
+                        </div>
+                      ) : formData.avatar ? (
                         <img
                           src={formData.avatar}
                           alt="Avatar"
@@ -351,7 +553,9 @@ const PublicProfile = () => {
                       )}
                       <button
                         type="button"
-                        className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                        onClick={handleAvatarClick}
+                        disabled={uploadingAvatar}
+                        className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ApartmentIcon sx={{ fontSize: 24, color: 'white' }} />
                       </button>
@@ -379,6 +583,7 @@ const PublicProfile = () => {
                     value={formData.displayName}
                     onChange={handleChange}
                     required
+                    maxLength={INPUT_LIMITS.NAME}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Seu nome profissional"
                   />
@@ -398,6 +603,8 @@ const PublicProfile = () => {
                       value={formData.username}
                       onChange={handleChange}
                       required
+                      maxLength={INPUT_LIMITS.USERNAME}
+                      pattern="[a-z0-9._]{3,30}"
                       className="w-full pl-7 pr-3 md:pl-8 md:pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="nomedeusuario"
                     />
@@ -417,6 +624,7 @@ const PublicProfile = () => {
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.LOCATION}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Cidade, Estado"
                   />
@@ -432,6 +640,7 @@ const PublicProfile = () => {
                     name="specialty"
                     value={formData.specialty}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.SPECIALTY}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Ex: Arquitetura Residencial"
                   />
@@ -446,6 +655,7 @@ const PublicProfile = () => {
                     name="experience"
                     value={formData.experience}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.EXPERIENCE}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Ex: 10+ anos"
                   />
@@ -460,6 +670,7 @@ const PublicProfile = () => {
                     name="cau"
                     value={formData.cau}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.CAU}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Ex: A12345678"
                   />
@@ -475,12 +686,12 @@ const PublicProfile = () => {
                   value={formData.bio}
                   onChange={handleChange}
                   rows={4}
-                  maxLength={500}
+                  maxLength={INPUT_LIMITS.BIO}
                   className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Conte um pouco sobre você e seu trabalho..."
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {formData.bio.length}/500 caracteres
+                  {formData.bio.length}/{INPUT_LIMITS.BIO} caracteres
                 </p>
               </div>
 
@@ -514,8 +725,12 @@ const PublicProfile = () => {
                   <input
                     type="text"
                     value={newSpecialty}
-                    onChange={(e) => setNewSpecialty(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = sanitizeInput(e.target.value)
+                      setNewSpecialty(limitLength(sanitized, INPUT_LIMITS.SPECIALTY))
+                    }}
                     onKeyPress={handleSpecialtyKeyPress}
+                    maxLength={INPUT_LIMITS.SPECIALTY}
                     className="flex-1 px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Digite uma área de atuação e pressione Enter"
                   />
@@ -546,6 +761,7 @@ const PublicProfile = () => {
                     name="education"
                     value={formData.education}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.EDUCATION}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Ex: FAU-USP, Pós-graduação em..."
                   />
@@ -560,9 +776,13 @@ const PublicProfile = () => {
                     value={formData.awards}
                     onChange={handleChange}
                     rows={3}
+                    maxLength={INPUT_LIMITS.AWARDS}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Liste seus prêmios e reconhecimentos..."
                   />
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.awards.length}/{INPUT_LIMITS.AWARDS} caracteres
+                </p>
                 </div>
               </div>
             </div>
@@ -600,6 +820,7 @@ const PublicProfile = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.PHONE}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="(00) 00000-0000"
                   />
@@ -615,6 +836,7 @@ const PublicProfile = () => {
                     name="website"
                     value={formData.website}
                     onChange={handleChange}
+                    maxLength={INPUT_LIMITS.WEBSITE}
                     className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="https://www.seusite.com.br"
                   />
@@ -636,6 +858,7 @@ const PublicProfile = () => {
                       name="instagram"
                       value={formData.instagram}
                       onChange={handleChange}
+                      maxLength={INPUT_LIMITS.INSTAGRAM}
                       className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="@seuusuario"
                     />
@@ -649,6 +872,7 @@ const PublicProfile = () => {
                       name="instagramUrl"
                       value={formData.instagramUrl}
                       onChange={handleChange}
+                      maxLength={INPUT_LIMITS.WEBSITE}
                       className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="https://instagram.com/seuusuario"
                     />
@@ -666,6 +890,7 @@ const PublicProfile = () => {
                       name="facebook"
                       value={formData.facebook}
                       onChange={handleChange}
+                      maxLength={INPUT_LIMITS.FACEBOOK}
                       className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="seuusuario"
                     />
@@ -679,11 +904,13 @@ const PublicProfile = () => {
                       name="facebookUrl"
                       value={formData.facebookUrl}
                       onChange={handleChange}
+                      maxLength={INPUT_LIMITS.WEBSITE}
                       className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="https://facebook.com/seuusuario"
                     />
                   </div>
                 </div>
+              </div>
               </div>
             </div>
 
