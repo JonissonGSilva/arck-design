@@ -344,9 +344,14 @@ const Chat = () => {
                       </p>
                     </div>
                     <button
-                      onClick={(e) => handleDeleteConversation(conv.id, e)}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-opacity"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleDeleteConversation(conv.id, e)
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-opacity z-10"
                       title="Deletar conversa"
+                      type="button"
                     >
                       {deletingConversation === conv.id ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
@@ -396,14 +401,16 @@ const Chat = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault()
                     const conv = conversations.find(c => c.id === selectedConversation)
                     if (conv) {
-                      handleDeleteConversation(conv.id, {} as React.MouseEvent)
+                      handleDeleteConversation(conv.id, e)
                     }
                   }}
                   className="p-1.5 md:p-2 hover:bg-red-100 rounded-lg transition-colors flex-shrink-0"
                   title="Deletar conversa"
+                  type="button"
                 >
                   <Trash2 className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
                 </button>
@@ -505,6 +512,22 @@ const Chat = () => {
           )}
         </div>
       </div>
+
+      {/* Modal de confirmação para deletar conversa */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false)
+          setConversationToDelete(null)
+        }}
+        onConfirm={confirmDeleteConversation}
+        title="Deletar conversa?"
+        message="Tem certeza que deseja deletar esta conversa? Esta ação não pode ser desfeita."
+        confirmText="Deletar"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={!!deletingConversation}
+      />
     </div>
   )
 }
