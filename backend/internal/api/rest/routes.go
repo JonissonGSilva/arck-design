@@ -97,10 +97,10 @@ func SetupRouter() *gin.Engine {
 			{
 				messages.GET("/conversations", listConversations)
 				messages.POST("/conversations", startConversation)
-				messages.GET("/conversations/:id", getConversation)
-				messages.DELETE("/conversations/:id", deleteConversation)
 				messages.GET("/conversations/:id/messages", getMessages)
 				messages.PUT("/conversations/:id/read", markAsRead)
+				messages.GET("/conversations/:id", getConversation)
+				messages.DELETE("/conversations/:id", deleteConversation)
 				messages.POST("", sendMessage)
 				messages.DELETE("/:id", deleteMessage)
 				messages.GET("/unread-count", getUnreadCount)
