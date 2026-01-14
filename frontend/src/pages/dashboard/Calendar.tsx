@@ -99,12 +99,18 @@ const Calendar = () => {
     setSaving(false)
   }
 
-  const handleDeleteClick = async (eventId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este evento?')) {
-      return
-    }
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null)
 
-    setDeletingId(eventId)
+  const handleDeleteClick = (eventId: string) => {
+    setEventToDelete(eventId)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return
+
+    setDeletingId(eventToDelete)
     try {
       const response = await calendarService.deleteEvent(eventId)
 

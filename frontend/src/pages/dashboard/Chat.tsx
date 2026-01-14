@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { messageService } from '../../services'
 import { useToast } from '../../contexts/ToastContext'
 import LoadingButton from '../../components/common/LoadingButton'
+import ConfirmModal from '../../components/common/ConfirmModal'
 import { sanitizeText, limitLength } from '../../utils/inputUtils'
 
 interface Conversation {
@@ -39,6 +40,8 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [deletingConversation, setDeletingConversation] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -182,24 +185,26 @@ const Chat = () => {
     }
   }
 
-  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevenir seleção da conversa
-    
-    if (!window.confirm('Tem certeza que deseja deletar esta conversa? Todas as mensagens serão perdidas.')) {
-      return
-    }
+    setConversationToDelete(conversationId)
+    setShowDeleteModal(true)
+  }
 
-    setDeletingConversation(conversationId)
+  const confirmDeleteConversation = async () => {
+    if (!conversationToDelete) return
+
+    setDeletingConversation(conversationToDelete)
     try {
-      const response = await messageService.deleteConversation(conversationId)
+      const response = await messageService.deleteConversation(conversationToDelete)
       if (response.data) {
         showToast('Conversa deletada com sucesso', 'success')
         
         // Remover da lista local
-        setConversations(prev => prev.filter(c => c.id !== conversationId))
+        setConversations(prev => prev.filter(c => c.id !== conversationToDelete))
         
         // Se a conversa deletada estava selecionada, limpar seleção
-        if (selectedConversation === conversationId) {
+        if (selectedConversation === conversationToDelete) {
           setSelectedConversation(null)
           setMessages([])
         }
@@ -211,6 +216,8 @@ const Chat = () => {
       showToast('Erro ao deletar conversa', 'error')
     } finally {
       setDeletingConversation(null)
+      setShowDeleteModal(false)
+      setConversationToDelete(null)
     }
   }
 

@@ -257,7 +257,7 @@ const Models3D: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Modelos 3D</h1>
           <p className="text-gray-600">Gerencie seus arquivos 3D e visualize-os no navegador</p>
         </div>
-        <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
+        <label className="px-3 md:px-4 py-1.5 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-xs md:text-sm font-medium whitespace-nowrap">
           <input
             ref={fileInputRef}
             type="file"
@@ -265,7 +265,7 @@ const Models3D: React.FC = () => {
             className="hidden"
             onChange={handleFileSelect}
           />
-          + Upload Modelo
+          + Adicionar modelo
         </label>
       </div>
 

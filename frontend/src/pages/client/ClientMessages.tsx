@@ -34,6 +34,8 @@ const ClientMessages: React.FC = () => {
   const [messages, setMessages] = useState<any[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [deletingConversation, setDeletingConversation] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     loadConversations()
@@ -283,24 +285,26 @@ const ClientMessages: React.FC = () => {
     }
   }
 
-  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevenir seleção da conversa
-    
-    if (!window.confirm('Tem certeza que deseja deletar esta conversa? Todas as mensagens serão perdidas.')) {
-      return
-    }
+    setConversationToDelete(conversationId)
+    setShowDeleteModal(true)
+  }
 
-    setDeletingConversation(conversationId)
+  const confirmDeleteConversation = async () => {
+    if (!conversationToDelete) return
+
+    setDeletingConversation(conversationToDelete)
     try {
-      const response = await messageService.deleteConversation(conversationId)
+      const response = await messageService.deleteConversation(conversationToDelete)
       if (response.data) {
         showToast('Conversa deletada com sucesso', 'success')
         
         // Remover da lista local
-        setConversations(prev => prev.filter(c => c.id !== conversationId))
+        setConversations(prev => prev.filter(c => c.id !== conversationToDelete))
         
         // Se a conversa deletada estava selecionada, limpar seleção
-        if (selectedConversation === conversationId) {
+        if (selectedConversation === conversationToDelete) {
           setSelectedConversation(null)
           setMessages([])
         }
@@ -312,6 +316,8 @@ const ClientMessages: React.FC = () => {
       showToast('Erro ao deletar conversa', 'error')
     } finally {
       setDeletingConversation(null)
+      setShowDeleteModal(false)
+      setConversationToDelete(null)
     }
   }
 
