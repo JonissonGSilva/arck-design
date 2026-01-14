@@ -101,7 +101,17 @@ const PublicProfile = () => {
         })
         
         if (profile.customization) {
-          setCustomization(profile.customization)
+          // Garantir que show3DModels esteja presente (compatibilidade com perfis antigos)
+          setCustomization({
+            ...DEFAULT_CUSTOMIZATION,
+            ...profile.customization,
+            show3DModels: profile.customization.show3DModels !== undefined 
+              ? profile.customization.show3DModels 
+              : DEFAULT_CUSTOMIZATION.show3DModels
+          })
+        } else {
+          // Se não houver customização, usar a padrão
+          setCustomization(DEFAULT_CUSTOMIZATION)
         }
       } else {
         // Perfil não existe (404) ou outro erro - preencher com dados do usuário para criação

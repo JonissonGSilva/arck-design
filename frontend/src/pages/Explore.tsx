@@ -286,9 +286,11 @@ const Explore = () => {
                   )}
 
                   {/* Description */}
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {architect.bio || 'Sem descrição disponível'}
-                  </p>
+                  {architect.bio && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {architect.bio}
+                    </p>
+                  )}
 
                   {/* Specialties Tags */}
                   {architect.specialties && architect.specialties.length > 0 && (

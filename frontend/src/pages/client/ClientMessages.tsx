@@ -37,6 +37,31 @@ const ClientMessages: React.FC = () => {
     loadConversations()
   }, [])
 
+  // Carregar mensagens quando uma conversa é selecionada
+  useEffect(() => {
+    const loadMessagesForConversation = async () => {
+      if (!selectedConversation) {
+        setMessages([])
+        return
+      }
+
+      setLoadingMessages(true)
+      try {
+        const response = await messageService.getMessages(selectedConversation)
+        if (response.data?.data) {
+          setMessages(response.data.data.reverse()) // Mais recentes primeiro
+        }
+      } catch (error) {
+        console.error('Erro ao carregar mensagens:', error)
+        showToast('Erro ao carregar mensagens', 'error')
+      } finally {
+        setLoadingMessages(false)
+      }
+    }
+
+    loadMessagesForConversation()
+  }, [selectedConversation])
+
   // Verificar se há query params para iniciar conversa com mensagem pré-preenchida
   useEffect(() => {
     const architectId = searchParams.get('architect')
@@ -94,12 +119,47 @@ const ClientMessages: React.FC = () => {
   const initializeConversationWithMessage = async (architectId: string, initialMessage: string) => {
     setIsInitializingConversation(true)
     try {
-      // Recarregar conversas primeiro para verificar se já existe
-      await loadConversations()
+      // Primeiro, recarregar conversas para ter a lista atualizada
+      const conversationsResponse = await messageService.getConversations()
+      if (!conversationsResponse.data) {
+        showToast('Erro ao carregar conversas', 'error')
+        return
+      }
+
+      // Mapear conversas corretamente
+      const mappedConversations: Conversation[] = (conversationsResponse.data as any[]).map((conv: any) => {
+        const otherUser = conv.architect || conv.otherParticipant || conv.otherUser || {
+          id: conv.architectId || '',
+          name: 'Arquiteto',
+          avatar: undefined
+        }
+        
+        return {
+          id: conv.id,
+          otherUser: {
+            id: otherUser.id || conv.architectId || '',
+            name: otherUser.name || otherUser.displayName || 'Arquiteto',
+            avatar: otherUser.avatar || undefined
+          },
+          lastMessage: conv.lastMessage ? {
+            content: conv.lastMessage.text || conv.lastMessage.content || '',
+            createdAt: conv.lastMessage.createdAt || conv.lastMessageAt || new Date().toISOString()
+          } : undefined,
+          unreadCount: typeof conv.unreadCount === 'object' 
+            ? (conv.unreadCount.client || conv.unreadCount[conv.id] || 0)
+            : (conv.unreadCount || 0)
+        }
+      })
+
+      setConversations(mappedConversations)
       
       // Verificar se já existe uma conversa com este arquiteto
-      const existingConversation = conversations.find(
-        (conv) => conv.otherUser?.id === architectId
+      // Usar comparação por ID do outro usuário
+      const existingConversation = mappedConversations.find(
+        (conv) => {
+          const otherUserId = conv.otherUser?.id
+          return otherUserId === architectId
+        }
       )
 
       if (existingConversation) {
@@ -108,27 +168,47 @@ const ClientMessages: React.FC = () => {
         setMessageText(initialMessage)
         showToast('Mensagem pré-preenchida! Você pode editar antes de enviar.', 'info')
       } else {
-        // Criar nova conversa
+        // Criar nova conversa apenas se não existir
         const conversationResponse = await messageService.startConversation(architectId)
         if (conversationResponse.data) {
-          // Recarregar conversas novamente
+          // Recarregar conversas novamente após criar
           await loadConversations()
           
-          // Buscar a conversa recém-criada
-          const newConversations = await messageService.getConversations()
-          if (newConversations.data) {
-            const updatedConversations = newConversations.data as unknown as Conversation[]
-            setConversations(updatedConversations)
+          // Buscar a conversa recém-criada na lista atualizada
+          const updatedResponse = await messageService.getConversations()
+          if (updatedResponse.data) {
+            const updatedMapped = (updatedResponse.data as any[]).map((conv: any) => {
+              const otherUser = conv.architect || conv.otherParticipant || conv.otherUser || {
+                id: conv.architectId || '',
+                name: 'Arquiteto',
+                avatar: undefined
+              }
+              
+              return {
+                id: conv.id,
+                otherUser: {
+                  id: otherUser.id || conv.architectId || '',
+                  name: otherUser.name || otherUser.displayName || 'Arquiteto',
+                  avatar: otherUser.avatar || undefined
+                },
+                lastMessage: conv.lastMessage ? {
+                  content: conv.lastMessage.text || conv.lastMessage.content || '',
+                  createdAt: conv.lastMessage.createdAt || conv.lastMessageAt || new Date().toISOString()
+                } : undefined,
+                unreadCount: typeof conv.unreadCount === 'object' 
+                  ? (conv.unreadCount.client || conv.unreadCount[conv.id] || 0)
+                  : (conv.unreadCount || 0)
+              }
+            })
             
-            const newConversation = updatedConversations.find(
+            setConversations(updatedMapped)
+            
+            const newConversation = updatedMapped.find(
               (conv) => conv.otherUser?.id === architectId
             )
             
             if (newConversation) {
-              // Selecionar a nova conversa
               setSelectedConversation(newConversation.id)
-              
-              // Pré-preencher a mensagem (sem enviar automaticamente)
               setMessageText(initialMessage)
               showToast('Conversa iniciada! Você pode editar a mensagem antes de enviar.', 'info')
             }
@@ -178,6 +258,14 @@ const ClientMessages: React.FC = () => {
 
       const response = await messageService.sendMessage(conversation.otherUser?.id || '', limitedMessage)
       if (response.data) {
+        // Adicionar mensagem à lista local
+        setMessages(prev => [...prev, {
+          id: response.data?.id || Date.now().toString(),
+          text: limitedMessage,
+          senderId: '', // Será preenchido pelo backend
+          receiverId: conversation.otherUser?.id || '',
+          createdAt: new Date().toISOString(),
+        }])
         setMessageText('')
         loadConversations()
         showToast('Mensagem enviada!', 'success')
@@ -200,7 +288,7 @@ const ClientMessages: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] flex">
+    <div className="h-[calc(100vh-64px)] flex overflow-hidden">
       {/* Lista de conversas */}
       <div className={`w-full md:w-80 bg-white border-r border-gray-200 flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-200">
@@ -257,9 +345,9 @@ const ClientMessages: React.FC = () => {
       </div>
 
       {/* Área de chat */}
-      <div className={`flex-1 flex flex-col ${!selectedConversation && !isInitializingConversation ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${!selectedConversation && !isInitializingConversation ? 'hidden md:flex' : 'flex'}`}>
         {(selectedConversation || isInitializingConversation) ? (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             {isInitializingConversation ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
@@ -292,23 +380,67 @@ const ClientMessages: React.FC = () => {
                     <p className="font-medium text-gray-900">
                       {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Conversa'}
                     </p>
-                    <p className="text-sm text-gray-500">Arquiteto</p>
                   </div>
                 </div>
 
                 {/* Mensagens */}
-                <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-                  <p className="text-center text-gray-500 text-sm">Carregando mensagens...</p>
+                <div className="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
+                  {loadingMessages ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+                        <p className="text-gray-500 text-sm">Carregando mensagens...</p>
+                      </div>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center text-gray-500">
+                        <p className="text-sm">Nenhuma mensagem ainda. Inicie a conversa!</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map((message) => {
+                        // Determinar se a mensagem é do cliente (senderId diferente do otherUser.id)
+                        const conversation = conversations.find(c => c.id === selectedConversation)
+                        const isMyMessage = message.senderId !== conversation?.otherUser?.id
+                        
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-md px-4 py-2 rounded-2xl ${
+                                isMyMessage
+                                  ? 'bg-primary-600 text-white'
+                                  : 'bg-white text-gray-900 border border-gray-200'
+                              }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                              <p
+                                className={`text-xs mt-1 ${
+                                  isMyMessage ? 'text-primary-100' : 'text-gray-500'
+                                }`}
+                              >
+                                {formatDate(message.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Input */}
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-gray-200 bg-white">
                   {messageText && searchParams.get('initialMessage') && (
                     <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
                       💬 Mensagem pré-preenchida. Você pode editar antes de enviar.
                     </div>
                   )}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-end">
                     <textarea
                       value={messageText}
                       onChange={(e) => {
