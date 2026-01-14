@@ -15,6 +15,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const isClient = user?.role === 'cliente'
   
   // Profile data
   const [profile, setProfile] = useState<UserProfile>({
@@ -78,13 +79,25 @@ const Settings = () => {
         // Load profile
         const profileResponse = await settingsService.getProfile()
         if (profileResponse.data) {
-          setProfile(profileResponse.data)
+          // Mapear dados retornados para o formato esperado
+          setProfile({
+            id: profileResponse.data.id || user?.id || '',
+            name: profileResponse.data.name || user?.name || '',
+            email: profileResponse.data.email || user?.email || '',
+            phone: profileResponse.data.phone || '',
+            bio: profileResponse.data.bio || '',
+            avatar: profileResponse.data.avatar || user?.avatar || '',
+            companyName: profileResponse.data.companyName || '',
+            cnpj: profileResponse.data.cnpj || '',
+            address: profileResponse.data.address || '',
+            website: profileResponse.data.website || '',
+          })
         } else if (user) {
-          // Fallback to auth user data
+          // Fallback to auth user data - apenas campos básicos
           setProfile({
             id: user.id,
-            name: user.name,
-            email: user.email,
+            name: user.name || '',
+            email: user.email || '',
             phone: '',
             bio: '',
             avatar: user.avatar || '',
@@ -93,6 +106,10 @@ const Settings = () => {
             address: '',
             website: '',
           })
+          // Se não encontrou perfil mas tem dados do user, tentar criar um perfil básico
+          if (profileResponse.error) {
+            console.log('[Settings] Perfil não encontrado, usando dados do usuário autenticado')
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error)
@@ -100,8 +117,8 @@ const Settings = () => {
         if (user) {
           setProfile({
             id: user.id,
-            name: user.name,
-            email: user.email,
+            name: user.name || '',
+            email: user.email || '',
             phone: '',
             bio: '',
             avatar: user.avatar || '',
@@ -111,6 +128,7 @@ const Settings = () => {
             website: '',
           })
         }
+        showToast('Erro ao carregar configurações. Alguns dados podem estar incompletos.', 'warning')
       } finally {
         setIsLoading(false)
       }
@@ -221,14 +239,23 @@ const Settings = () => {
     }
   }
 
-  const tabs = [
-    { id: 'profile', label: 'Perfil', icon: User },
-    { id: 'company', label: 'Empresa', icon: Building2 },
-    { id: 'notifications', label: 'Notificações', icon: Bell },
-    { id: 'security', label: 'Segurança', icon: Lock },
-    { id: 'billing', label: 'Pagamento', icon: CreditCard },
-    { id: 'preferences', label: 'Preferências', icon: Globe },
-  ]
+  // Tabs diferentes para cliente e arquiteto
+  const tabs = isClient
+    ? [
+        { id: 'profile', label: 'Perfil', icon: User },
+        { id: 'notifications', label: 'Notificações', icon: Bell },
+        { id: 'security', label: 'Segurança', icon: Lock },
+        { id: 'billing', label: 'Pagamento', icon: CreditCard },
+        { id: 'preferences', label: 'Preferências', icon: Globe },
+      ]
+    : [
+        { id: 'profile', label: 'Perfil', icon: User },
+        { id: 'company', label: 'Empresa', icon: Building2 },
+        { id: 'notifications', label: 'Notificações', icon: Bell },
+        { id: 'security', label: 'Segurança', icon: Lock },
+        { id: 'billing', label: 'Pagamento', icon: CreditCard },
+        { id: 'preferences', label: 'Preferências', icon: Globe },
+      ]
 
   if (isLoading) {
     return (
@@ -308,8 +335,11 @@ const Settings = () => {
                     type="email"
                     value={profile.email}
                     onChange={(e) => setProfile({...profile, email: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    title="Email não pode ser alterado"
                   />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email não pode ser alterado</p>
                 </div>
 
                 <div>
@@ -339,7 +369,7 @@ const Settings = () => {
             </div>
           )}
 
-          {activeTab === 'company' && (
+          {activeTab === 'company' && !isClient && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Informações da Empresa</h2>
               
@@ -418,8 +448,12 @@ const Settings = () => {
 
                 <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Atualizações de Projeto</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Quando houver mudanças nos projetos</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {isClient ? 'Atualizações de Projetos Contratados' : 'Atualizações de Projeto'}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {isClient ? 'Quando houver mudanças nos projetos que você contratou' : 'Quando houver mudanças nos projetos'}
+                    </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -432,21 +466,40 @@ const Settings = () => {
                   </label>
                 </div>
 
-                <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Mensagens de Clientes</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Novas mensagens dos clientes</p>
+                {!isClient && (
+                  <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Mensagens de Clientes</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Novas mensagens dos clientes</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notifications.clientMessages}
+                        onChange={(e) => setNotifications({...notifications, clientMessages: e.target.checked})}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifications.clientMessages}
-                      onChange={(e) => setNotifications({...notifications, clientMessages: e.target.checked})}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
-                </div>
+                )}
+                {isClient && (
+                  <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Mensagens de Arquitetos</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Respostas de arquitetos às suas mensagens</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notifications.clientMessages}
+                        onChange={(e) => setNotifications({...notifications, clientMessages: e.target.checked})}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between py-3">
                   <div>

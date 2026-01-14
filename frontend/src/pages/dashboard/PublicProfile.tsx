@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import WorkIcon from '@mui/icons-material/Work'
@@ -57,6 +57,10 @@ const PublicProfile = () => {
   
   const [customization, setCustomization] = useState<ProfileCustomization>(DEFAULT_CUSTOMIZATION)
   const [newSpecialty, setNewSpecialty] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
 
   // Carregar perfil existente
   useEffect(() => {
@@ -563,11 +567,11 @@ const PublicProfile = () => {
               </div>
             </div>
 
-            {/* Contact Info */}
+            {/* Contact and Social Media - Combined */}
             <div className="bg-white rounded-xl p-4 md:p-6 border border-gray-200 shadow-sm">
-              <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Informações de Contato</h2>
+              <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Contato e Redes Sociais</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
                 <div>
                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                     <EmailIcon sx={{ fontSize: 16 }} />
@@ -578,9 +582,12 @@ const PublicProfile = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    disabled
+                    className="w-full px-3 md:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                     placeholder="seu@email.com"
+                    title="Email não pode ser alterado aqui (use Configurações)"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Email não pode ser alterado (gerenciado em Configurações)</p>
                 </div>
 
                 <div>
@@ -613,11 +620,9 @@ const PublicProfile = () => {
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Social Media */}
-            <div className="bg-white rounded-xl p-4 md:p-6 border border-gray-200 shadow-sm">
-              <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">Redes Sociais</h2>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Redes Sociais</h3>
               
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

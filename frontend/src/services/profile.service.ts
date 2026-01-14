@@ -19,7 +19,7 @@ export type ProfileLayoutType =
 
 export interface ProfileCustomization {
   layout: ProfileLayoutType
-  gridColumns: number        // 2, 3, 4
+  gridColumns: number        // 1, 2, 3, 4 (mobile first)
   showStats: boolean         // Mostrar estatísticas
   showServices: boolean      // Mostrar serviços
   showReviews: boolean       // Mostrar avaliações
@@ -151,9 +151,10 @@ export const LAYOUT_OPTIONS = [
 ]
 
 export const GRID_COLUMN_OPTIONS = [
-  { value: 2, label: '2 Colunas' },
-  { value: 3, label: '3 Colunas' },
-  { value: 4, label: '4 Colunas' },
+  { value: 1, label: '1 Coluna (Mobile)' },
+  { value: 2, label: '2 Colunas (Tablet)' },
+  { value: 3, label: '3 Colunas (Desktop)' },
+  { value: 4, label: '4 Colunas (Wide)' },
 ]
 
 export const HERO_STYLE_OPTIONS = [

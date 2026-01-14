@@ -47,6 +47,18 @@ const PublicProfile = () => {
             // Filtrar projetos do arquiteto (se necessário implementar no backend)
             setProjects(projectsResponse.data.data || [])
           }
+
+          // Verificar se o arquiteto está nos favoritos
+          if (isAuthenticated && user?.role !== 'arquiteto') {
+            try {
+              const favoriteCheck = await favoritesService.checkFavorite(response.data.userId)
+              if (favoriteCheck.data) {
+                setIsFavorite(favoriteCheck.data.isFavorite)
+              }
+            } catch (error) {
+              console.error('Erro ao verificar favorito:', error)
+            }
+          }
         }
       } else if (response.error) {
         showToast('Perfil não encontrado', 'error')
@@ -57,7 +69,7 @@ const PublicProfile = () => {
     }
 
     loadProfile()
-  }, [username])
+  }, [username, isAuthenticated, user])
 
   const handleToggleFavorite = async () => {
     if (!isAuthenticated) {
@@ -236,12 +248,20 @@ const PublicProfile = () => {
                     )}
                   </button>
                 )}
-                <Link
-                  to={isAuthenticated ? `/client/messages?architect=${profile.username}` : '/login'}
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      navigate('/login')
+                      return
+                    }
+                    // Navegar para mensagens com query params para pré-preencher mensagem
+                    const initialMessage = `Olá ${profile.displayName}! Gostaria de solicitar um orçamento para meu projeto. Poderia me enviar mais informações?`
+                    navigate(`/client/messages?architect=${profile.userId}&initialMessage=${encodeURIComponent(initialMessage)}`)
+                  }}
                   className="px-4 md:px-6 py-2 md:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold text-xs md:text-sm"
                 >
                   Solicitar Orçamento
-                </Link>
+                </button>
               </div>
             </div>
 

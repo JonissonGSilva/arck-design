@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Chat, Person, Email, Send } from '@mui/icons-material'
 import { useToast } from '../../contexts/ToastContext'
 import { messageService } from '../../services'
@@ -20,15 +21,32 @@ interface Conversation {
 
 const ClientMessages: React.FC = () => {
   const { showToast } = useToast()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [isInitializingConversation, setIsInitializingConversation] = useState(false)
 
   useEffect(() => {
     loadConversations()
   }, [])
+
+  // Verificar se há query params para iniciar conversa com mensagem pré-preenchida
+  useEffect(() => {
+    const architectId = searchParams.get('architect')
+    const initialMessage = searchParams.get('initialMessage')
+
+    if (architectId && initialMessage) {
+      // Limpar query params da URL
+      navigate('/client/messages', { replace: true })
+      
+      // Iniciar conversa com o arquiteto
+      initializeConversationWithMessage(architectId, initialMessage)
+    }
+  }, [searchParams, navigate])
 
   const loadConversations = async () => {
     setIsLoading(true)
@@ -41,6 +59,60 @@ const ClientMessages: React.FC = () => {
       showToast('Erro ao carregar conversas', 'error')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const initializeConversationWithMessage = async (architectId: string, initialMessage: string) => {
+    setIsInitializingConversation(true)
+    try {
+      // Recarregar conversas primeiro para verificar se já existe
+      await loadConversations()
+      
+      // Verificar se já existe uma conversa com este arquiteto
+      const existingConversation = conversations.find(
+        (conv) => conv.otherUser.id === architectId
+      )
+
+      if (existingConversation) {
+        // Se já existe, apenas selecionar e pré-preencher mensagem
+        setSelectedConversation(existingConversation.id)
+        setMessageText(initialMessage)
+        showToast('Mensagem pré-preenchida! Você pode editar antes de enviar.', 'info')
+      } else {
+        // Criar nova conversa
+        const conversationResponse = await messageService.startConversation(architectId)
+        if (conversationResponse.data) {
+          // Recarregar conversas novamente
+          await loadConversations()
+          
+          // Buscar a conversa recém-criada
+          const newConversations = await messageService.getConversations()
+          if (newConversations.data) {
+            const updatedConversations = newConversations.data as unknown as Conversation[]
+            setConversations(updatedConversations)
+            
+            const newConversation = updatedConversations.find(
+              (conv) => conv.otherUser.id === architectId
+            )
+            
+            if (newConversation) {
+              // Selecionar a nova conversa
+              setSelectedConversation(newConversation.id)
+              
+              // Pré-preencher a mensagem (sem enviar automaticamente)
+              setMessageText(initialMessage)
+              showToast('Conversa iniciada! Você pode editar a mensagem antes de enviar.', 'info')
+            }
+          }
+        } else {
+          showToast(conversationResponse.error || 'Erro ao iniciar conversa', 'error')
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao inicializar conversa:', error)
+      showToast('Erro ao iniciar conversa', 'error')
+    } finally {
+      setIsInitializingConversation(false)
     }
   }
 
@@ -64,10 +136,18 @@ const ClientMessages: React.FC = () => {
 
     setSendingMessage(true)
     try {
-      const response = await messageService.sendMessage(selectedConversation, messageText.trim())
+      // Obter o userId do destinatário da conversa
+      const conversation = conversations.find((c) => c.id === selectedConversation)
+      if (!conversation) {
+        showToast('Conversa não encontrada', 'error')
+        return
+      }
+
+      const response = await messageService.sendMessage(conversation.otherUser.id, messageText.trim())
       if (response.data) {
         setMessageText('')
         loadConversations()
+        showToast('Mensagem enviada!', 'success')
       } else if (response.error) {
         showToast(response.error, 'error')
       }
@@ -144,57 +224,86 @@ const ClientMessages: React.FC = () => {
       </div>
 
       {/* Área de chat */}
-      <div className={`flex-1 flex flex-col ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-        {selectedConversation ? (
+      <div className={`flex-1 flex flex-col ${!selectedConversation && !isInitializingConversation ? 'hidden md:flex' : 'flex'}`}>
+        {(selectedConversation || isInitializingConversation) ? (
           <div className="flex-1 flex flex-col">
-            {/* Header do chat */}
-            <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-              <button
-                onClick={() => setSelectedConversation(null)}
-                className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-              >
-                ←
-              </button>
-              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                <Person className="text-gray-600" />
+            {isInitializingConversation ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Iniciando conversa...</p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-gray-900">
-                  {conversations.find(c => c.id === selectedConversation)?.otherUser.name || 'Conversa'}
-                </p>
-                <p className="text-sm text-gray-500">Arquiteto</p>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Header do chat */}
+                <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedConversation(null)}
+                    className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    ←
+                  </button>
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    {conversations.find(c => c.id === selectedConversation)?.otherUser.avatar ? (
+                      <img 
+                        src={conversations.find(c => c.id === selectedConversation)?.otherUser.avatar} 
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Person className="text-gray-600" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {conversations.find(c => c.id === selectedConversation)?.otherUser.name || 'Conversa'}
+                    </p>
+                    <p className="text-sm text-gray-500">Arquiteto</p>
+                  </div>
+                </div>
 
-            {/* Mensagens */}
-            <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-              <p className="text-center text-gray-500 text-sm">Carregando mensagens...</p>
-            </div>
+                {/* Mensagens */}
+                <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+                  <p className="text-center text-gray-500 text-sm">Carregando mensagens...</p>
+                </div>
 
-            {/* Input */}
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && !sendingMessage && messageText.trim() && handleSendMessage()}
-                  placeholder="Digite sua mensagem..."
-                  disabled={sendingMessage}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
-                />
-                <LoadingButton
-                  onClick={handleSendMessage}
-                  loading={sendingMessage}
-                  variant="primary"
-                  size="md"
-                  disabled={!messageText.trim()}
-                  icon={<Send className="h-5 w-5" />}
-                >
-                  <span className="hidden sm:inline">Enviar</span>
-                </LoadingButton>
-              </div>
-            </div>
+                {/* Input */}
+                <div className="p-4 border-t border-gray-200">
+                  {messageText && searchParams.get('initialMessage') && (
+                    <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                      💬 Mensagem pré-preenchida. Você pode editar antes de enviar.
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <textarea
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && !sendingMessage && messageText.trim()) {
+                          e.preventDefault()
+                          handleSendMessage()
+                        }
+                      }}
+                      placeholder="Digite sua mensagem..."
+                      disabled={sendingMessage}
+                      rows={Math.min(messageText.split('\n').length, 4) || 1}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 resize-none"
+                    />
+                    <LoadingButton
+                      onClick={handleSendMessage}
+                      loading={sendingMessage}
+                      variant="primary"
+                      size="md"
+                      disabled={!messageText.trim()}
+                      icon={<Send className="h-5 w-5" />}
+                    >
+                      <span className="hidden sm:inline">Enviar</span>
+                    </LoadingButton>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
