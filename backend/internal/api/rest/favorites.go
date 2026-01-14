@@ -147,7 +147,7 @@ func checkFavorite(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"favorited": isFavorited})
+	c.JSON(http.StatusOK, gin.H{"isFavorite": isFavorited})
 }
 
 

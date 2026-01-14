@@ -98,6 +98,7 @@ func SetupRouter() *gin.Engine {
 				messages.GET("/conversations", listConversations)
 				messages.POST("/conversations", startConversation)
 				messages.GET("/conversations/:id", getConversation)
+				messages.DELETE("/conversations/:id", deleteConversation)
 				messages.GET("/conversations/:id/messages", getMessages)
 				messages.PUT("/conversations/:id/read", markAsRead)
 				messages.POST("", sendMessage)
@@ -281,6 +282,9 @@ func SetupRouter() *gin.Engine {
 		{
 			// Public architect services
 			public.GET("/architects/:architectId/services", getPublicArchitectServices)
+
+			// Public 3D Models
+			public.GET("/models3d/:id", getPublicModel3D)
 
 			// Public architect reviews
 			public.GET("/architects/:architectId/reviews", getArchitectReviews)

@@ -96,6 +96,42 @@ func getModel3D(c *gin.Context) {
 	c.JSON(http.StatusOK, modelFile)
 }
 
+// getPublicModel3D retorna um arquivo 3D por ID (rota pública - apenas modelos públicos)
+func getPublicModel3D(c *gin.Context) {
+	modelID := c.Param("id")
+	if modelID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID do modelo é obrigatório"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	modelFile, err := model3d.GetByID(ctx, modelID, true)
+	if err != nil {
+		if err == model3d.ErrModelNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Arquivo 3D não encontrado"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar arquivo 3D"})
+		return
+	}
+
+	// Verificar se o modelo é público
+	if !modelFile.IsPublic {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Este modelo não está disponível publicamente"})
+		return
+	}
+
+	// Verificar se o modelo está pronto
+	if modelFile.Status != "ready" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Modelo ainda não está pronto para visualização"})
+		return
+	}
+
+	c.JSON(http.StatusOK, modelFile)
+}
+
 // listModels3D lista arquivos 3D
 func listModels3D(c *gin.Context) {
 	userID, _ := c.Get("userID")

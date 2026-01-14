@@ -13,6 +13,7 @@ import (
 	"arck-design/backend/internal/services/cloudinary"
 	"arck-design/backend/internal/services/image"
 	"arck-design/backend/internal/services/profile"
+	"arck-design/backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -400,6 +401,15 @@ func getPublicProfile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar perfil"})
 		return
 	}
+
+	// Incrementar contador de visualizações (assíncrono para não bloquear a resposta)
+	go func() {
+		ctx := context.Background()
+		if err := profile.IncrementProfileViews(ctx, p.UserID.Hex()); err != nil {
+			// Log do erro mas não falha a requisição
+			utils.Error("Erro ao incrementar visualizações do perfil %s: %v", p.UserID.Hex(), err)
+		}
+	}()
 
 	c.JSON(http.StatusOK, p)
 }

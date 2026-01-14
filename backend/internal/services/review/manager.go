@@ -87,25 +87,37 @@ func CreateReview(ctx context.Context, review *models.Review) (*models.Review, e
 		return nil, ErrAlreadyReviewed
 	}
 
+	// VALIDAÇÃO: Exigir projeto concluído para permitir avaliação
+	if review.ProjectID == nil {
+		return nil, errors.New("é necessário ter um projeto concluído para avaliar o arquiteto")
+	}
+
+	// Verificar se o projeto existe e está concluído
+	var project models.Project
+	err = database.ProjectsCollection.FindOne(ctx, bson.M{
+		"_id":      review.ProjectID,
+		"clientId": review.ClientID,
+		"userId":   review.ArchitectID,
+	}).Decode(&project)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("projeto não encontrado ou você não tem permissão para avaliar este projeto")
+		}
+		return nil, err
+	}
+
+	// Verificar se o projeto está concluído
+	if project.ProjectStatus != models.WorkStatusConcluido {
+		return nil, errors.New("apenas projetos concluídos podem ser avaliados")
+	}
+
 	// Definir timestamps
 	now := time.Now()
 	review.ID = primitive.NewObjectID()
 	review.CreatedAt = now
 	review.UpdatedAt = now
 	review.Helpful = 0
-
-	// Verificar se o review é de um projeto concluído (verified)
-	if review.ProjectID != nil {
-		var project models.Project
-		err := database.ProjectsCollection.FindOne(ctx, bson.M{
-			"_id":      review.ProjectID,
-			"clientId": review.ClientID,
-			"userId":   review.ArchitectID,
-		}).Decode(&project)
-		if err == nil && project.ProjectStatus == models.WorkStatusConcluido {
-			review.Verified = true
-		}
-	}
+	review.Verified = true // Marcar como verificado já que o projeto está concluído
 
 	// Inserir review
 	_, err = database.ReviewsCollection.InsertOne(ctx, review)

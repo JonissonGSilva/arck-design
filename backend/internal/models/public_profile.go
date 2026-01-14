@@ -120,6 +120,7 @@ type PublicProfile struct {
 	Customization  *ProfileCustomization `bson:"customization,omitempty" json:"customization,omitempty"`
 	ProjectsCount  int                   `bson:"projectsCount" json:"projectsCount"`
 	ReviewsCount   int                   `bson:"reviewsCount" json:"reviewsCount"`
+	ViewsCount     int                   `bson:"viewsCount" json:"viewsCount"`
 	CreatedAt      time.Time             `bson:"createdAt" json:"createdAt"`
 	UpdatedAt      time.Time             `bson:"updatedAt" json:"updatedAt"`
 }

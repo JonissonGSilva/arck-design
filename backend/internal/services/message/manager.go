@@ -172,6 +172,41 @@ func GetConversationByID(ctx context.Context, conversationID, userID string) (*m
 	return &conversation, nil
 }
 
+// DeleteConversation deleta uma conversa e todas as suas mensagens
+func DeleteConversation(ctx context.Context, conversationID, userID string) error {
+	cid, err := primitive.ObjectIDFromHex(conversationID)
+	if err != nil {
+		return err
+	}
+	uid, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+
+	// Verificar se usuário faz parte da conversa
+	var conversation models.Conversation
+	err = database.ConversationsCollection.FindOne(ctx, bson.M{
+		"_id":          cid,
+		"participants": uid,
+	}).Decode(&conversation)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrConversationNotFound
+		}
+		return err
+	}
+
+	// Deletar todas as mensagens da conversa
+	_, err = database.MessagesCollection.DeleteMany(ctx, bson.M{"conversationId": cid})
+	if err != nil {
+		return err
+	}
+
+	// Deletar a conversa
+	_, err = database.ConversationsCollection.DeleteOne(ctx, bson.M{"_id": cid})
+	return err
+}
+
 // ============================================
 // MENSAGENS
 // ============================================

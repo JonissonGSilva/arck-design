@@ -430,6 +430,26 @@ func IncrementProjectsCount(ctx context.Context, userID string, delta int) error
 	return err
 }
 
+// IncrementProfileViews incrementa o contador de visualizações do perfil
+func IncrementProfileViews(ctx context.Context, userID string) error {
+	userObjID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return ErrInvalidData
+	}
+
+	update := bson.M{
+		"$inc": bson.M{"viewsCount": 1},
+		"$set": bson.M{"updatedAt": time.Now()},
+	}
+
+	_, err = database.PublicProfilesCollection.UpdateOne(
+		ctx,
+		bson.M{"userId": userObjID},
+		update,
+	)
+	return err
+}
+
 // IncrementReviewsCount incrementa o contador de reviews
 func IncrementReviewsCount(ctx context.Context, userID string, delta int) error {
 	userObjID, err := primitive.ObjectIDFromHex(userID)

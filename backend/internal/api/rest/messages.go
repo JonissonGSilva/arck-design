@@ -278,4 +278,38 @@ func startConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, conversation)
 }
 
+// deleteConversation deleta uma conversa
+func deleteConversation(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Não autenticado"})
+		return
+	}
+
+	conversationID := c.Param("id")
+	if conversationID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID da conversa é obrigatório"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	err := message.DeleteConversation(ctx, conversationID, userID.(string))
+	if err != nil {
+		if err == message.ErrUnauthorized {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Sem permissão para deletar esta conversa"})
+			return
+		}
+		if err == message.ErrConversationNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Conversa não encontrada"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao deletar conversa"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Conversa deletada com sucesso"})
+}
+
 
