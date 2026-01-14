@@ -11,6 +11,9 @@ func SetupRouter() *gin.Engine {
 	}
 
 	router := gin.Default()
+	
+	// Configurar limite de tamanho para multipart forms (100MB)
+	router.MaxMultipartMemory = 100 << 20 // 100 MB
 
 	// CORS middleware
 	router.Use(corsMiddleware())

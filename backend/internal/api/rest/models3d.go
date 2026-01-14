@@ -51,7 +51,8 @@ func uploadModel3D(c *gin.Context) {
 		req.Tags = splitTags(tagsStr)
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	// Timeout maior para uploads grandes (10 minutos)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Minute)
 	defer cancel()
 
 	modelFile, err := model3d.Upload(ctx, userID.(string), file, req)

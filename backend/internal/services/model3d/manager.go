@@ -41,9 +41,13 @@ var (
 // ============================================
 
 const (
-	MaxFileSize       = 100 * 1024 * 1024 // 100MB
-	TempDir           = "/tmp/arck-models"
+	MaxFileSize = 100 * 1024 * 1024 // 100MB
 )
+
+// getTempDir retorna o diretório temporário para modelos 3D
+func getTempDir() string {
+	return filepath.Join(os.TempDir(), "arck-models")
+}
 
 // ============================================
 // FUNÇÕES DE GERENCIAMENTO
@@ -75,12 +79,13 @@ func Upload(ctx context.Context, userID string, file *multipart.FileHeader, req 
 	defer src.Close()
 
 	// Criar diretório temporário se não existir
-	if err := os.MkdirAll(TempDir, 0755); err != nil {
+	tempDir := getTempDir()
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, err
 	}
 
 	// Salvar temporariamente
-	tempPath := filepath.Join(TempDir, fmt.Sprintf("%s_%s", primitive.NewObjectID().Hex(), file.Filename))
+	tempPath := filepath.Join(tempDir, fmt.Sprintf("%s_%s", primitive.NewObjectID().Hex(), file.Filename))
 	dst, err := os.Create(tempPath)
 	if err != nil {
 		return nil, err
@@ -142,9 +147,43 @@ func Upload(ctx context.Context, userID string, file *multipart.FileHeader, req 
 		return nil, err
 	}
 
-	// Se não estiver em formato web, iniciar conversão assíncrona
+	// Se não estiver em formato web, tentar processar
+	// Por enquanto, como a conversão não está implementada, apenas marcamos como pronto
+	// se já estiver em formato web, ou como pendente se não estiver
 	if modelFile.Status == models.ModelFileStatusPending {
-		go processModelFile(modelFile.ID.Hex())
+		fmt.Printf("[MODEL3D] Arquivo marcado como pendente - ID: %s, Formato: %s\n", modelFile.ID.Hex(), modelFile.OriginalFormat)
+		
+		// Log específico para DWG
+		if modelFile.OriginalFormat == models.ModelFormatDWG {
+			fmt.Printf("[MODEL3D] [DWG] Arquivo DWG pendente de processamento - ID: %s, Nome: %s\n", modelFile.ID.Hex(), modelFile.OriginalName)
+			fmt.Printf("[MODEL3D] [DWG] URL original: %s\n", modelFile.OriginalURL)
+			fmt.Printf("[MODEL3D] [DWG] Tamanho: %d bytes\n", modelFile.OriginalSize)
+		}
+		
+		// Se já estiver em formato web (GLB/GLTF), não precisa processar
+		// Caso contrário, marcar como pronto sem conversão (conversão será implementada depois)
+		// Por enquanto, vamos marcar como pronto mesmo sem conversão para não bloquear o usuário
+		now := time.Now()
+		update := bson.M{
+			"$set": bson.M{
+				"status":      models.ModelFileStatusReady,
+				"processedAt": now,
+				"updatedAt":   now,
+				"processingError": "Conversão automática não disponível. Arquivo disponível no formato original.",
+			},
+		}
+		_, err = database.ModelFilesCollection.UpdateOne(ctx, bson.M{"_id": modelFile.ID}, update)
+		if err != nil {
+			fmt.Printf("[MODEL3D] Erro ao atualizar status: %v\n", err)
+		} else {
+			fmt.Printf("[MODEL3D] Status atualizado para 'ready' - ID: %s\n", modelFile.ID.Hex())
+			if modelFile.OriginalFormat == models.ModelFormatDWG {
+				fmt.Printf("[MODEL3D] [DWG] Arquivo DWG marcado como pronto (sem conversão) - ID: %s\n", modelFile.ID.Hex())
+			}
+		}
+		
+		// TODO: Implementar conversão assíncrona quando assimp estiver disponível
+		// go processModelFile(modelFile.ID.Hex())
 	}
 
 	return modelFile, nil
@@ -465,25 +504,65 @@ func processModelFile(modelID string) {
 
 // convertToGLB converte um modelo para GLB
 func convertToGLB(ctx context.Context, modelFile *models.ModelFile) (string, int64, error) {
+	fmt.Printf("[MODEL3D] Iniciando conversão para GLB - ID: %s, Formato: %s\n", modelFile.ID.Hex(), modelFile.OriginalFormat)
+	
+	// Log específico para DWG
+	if modelFile.OriginalFormat == models.ModelFormatDWG {
+		fmt.Printf("[MODEL3D] [DWG] Iniciando conversão DWG para GLB - ID: %s\n", modelFile.ID.Hex())
+		fmt.Printf("[MODEL3D] [DWG] Arquivo: %s, Tamanho: %d bytes\n", modelFile.OriginalName, modelFile.OriginalSize)
+		fmt.Printf("[MODEL3D] [DWG] URL original: %s\n", modelFile.OriginalURL)
+	}
+	
 	// Verificar se assimp está disponível
-	_, err := exec.LookPath("assimp")
+	assimpPath, err := exec.LookPath("assimp")
 	if err != nil {
-		// Assimp não disponível - usar fallback ou retornar erro
-		// Por enquanto, retornamos um erro informativo
-		return "", 0, fmt.Errorf("conversão não disponível: assimp não instalado")
+		fmt.Printf("[MODEL3D] Assimp não encontrado no PATH - usando fallback\n")
+		if modelFile.OriginalFormat == models.ModelFormatDWG {
+			fmt.Printf("[MODEL3D] [DWG] Assimp não disponível - retornando arquivo original como fallback\n")
+		}
+		// Assimp não disponível - retornar o arquivo original como fallback
+		// Isso permite que o usuário use o arquivo mesmo sem conversão
+		return modelFile.OriginalURL, modelFile.OriginalSize, nil
+	}
+	
+	fmt.Printf("[MODEL3D] Assimp encontrado em: %s\n", assimpPath)
+	if modelFile.OriginalFormat == models.ModelFormatDWG {
+		fmt.Printf("[MODEL3D] [DWG] Assimp disponível - prosseguindo com conversão\n")
 	}
 
 	// Criar diretório temporário
-	tempDir := filepath.Join(TempDir, modelFile.ID.Hex())
+	tempDir := filepath.Join(getTempDir(), modelFile.ID.Hex())
+	fmt.Printf("[MODEL3D] Criando diretório temporário: %s\n", tempDir)
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		fmt.Printf("[MODEL3D] Erro ao criar diretório temporário: %v\n", err)
 		return "", 0, err
 	}
 	defer os.RemoveAll(tempDir)
+	
+	if modelFile.OriginalFormat == models.ModelFormatDWG {
+		fmt.Printf("[MODEL3D] [DWG] Diretório temporário criado: %s\n", tempDir)
+	}
 
 	// TODO: Download do arquivo original
+	fmt.Printf("[MODEL3D] TODO: Implementar download do arquivo original\n")
+	if modelFile.OriginalFormat == models.ModelFormatDWG {
+		fmt.Printf("[MODEL3D] [DWG] TODO: Download do arquivo DWG de: %s\n", modelFile.OriginalURL)
+	}
+	
 	// TODO: Executar assimp para conversão
+	fmt.Printf("[MODEL3D] TODO: Executar assimp para conversão\n")
+	if modelFile.OriginalFormat == models.ModelFormatDWG {
+		fmt.Printf("[MODEL3D] [DWG] TODO: Executar: assimp export %s %s.glb\n", modelFile.OriginalName, modelFile.ID.Hex())
+	}
+	
 	// TODO: Upload do arquivo convertido
-	// Por enquanto, retornamos um placeholder
+	fmt.Printf("[MODEL3D] TODO: Upload do arquivo convertido\n")
+	
+	// Por enquanto, retornamos o arquivo original como fallback
+	fmt.Printf("[MODEL3D] Retornando arquivo original como fallback - ID: %s\n", modelFile.ID.Hex())
+	if modelFile.OriginalFormat == models.ModelFormatDWG {
+		fmt.Printf("[MODEL3D] [DWG] Retornando DWG original (conversão não implementada) - ID: %s\n", modelFile.ID.Hex())
+	}
 
 	return modelFile.OriginalURL, modelFile.OriginalSize, nil
 }
