@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
 
 	"arck-design/backend/internal/config"
+	"arck-design/backend/internal/utils"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -27,14 +27,14 @@ var ErrCacheMiss = errors.New("cache miss")
 func InitRedis() error {
 	cfg := config.AppConfig
 	if cfg.RedisURL == "" {
-		log.Println("Redis URL não configurada, cache desabilitado")
+		utils.Debug("Redis URL não configurada, cache desabilitado")
 		enabled = false
 		return nil
 	}
 
 	opts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
-		log.Printf("Erro ao parsear Redis URL: %v", err)
+		utils.Error("Erro ao parsear Redis URL: %v", err)
 		enabled = false
 		return err
 	}
@@ -47,13 +47,13 @@ func InitRedis() error {
 
 	_, err = RedisClient.Ping(ctx).Result()
 	if err != nil {
-		log.Printf("Erro ao conectar ao Redis: %v", err)
+		utils.Error("Erro ao conectar ao Redis: %v", err)
 		enabled = false
 		return err
 	}
 
 	enabled = true
-	log.Println("Redis conectado com sucesso")
+	utils.Debug("Redis conectado com sucesso")
 	return nil
 }
 

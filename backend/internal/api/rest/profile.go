@@ -175,102 +175,87 @@ func uploadProfileAvatar(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form se necessário (Gin faz isso automaticamente, mas vamos garantir)
-	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10MB
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Erro ao processar formulário multipart: " + err.Error(),
-		})
-		return
-	}
-
-	// Tentar receber arquivo primeiro (multipart/form-data)
-	// O Gin automaticamente processa multipart/form-data quando FormFile é chamado
+	// Tentar receber arquivo diretamente (Gin processa multipart automaticamente)
 	file, err := c.FormFile("file")
 	if err != nil {
-		// Se não conseguiu receber arquivo, retornar erro específico
 		contentType := c.GetHeader("Content-Type")
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Erro ao receber arquivo. Verifique se o campo 'file' está sendo enviado no FormData. Content-Type: %s. Erro: %s", contentType, err.Error()),
+			"error": fmt.Sprintf("Erro ao receber arquivo: %s. Content-Type: %s. Certifique-se de enviar o arquivo via FormData com o campo 'file'.", err.Error(), contentType),
 		})
 		return
 	}
 
-	if file != nil {
-		// Upload de arquivo
-		src, err := file.Open()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Erro ao abrir arquivo"})
-			return
-		}
-		defer src.Close()
+	// Upload de arquivo
+	src, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Erro ao abrir arquivo"})
+		return
+	}
+	defer src.Close()
 
-		fileData, err := io.ReadAll(src)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao ler arquivo"})
-			return
-		}
-
-		// Validar imagem
-		if err := image.ValidateImage(fileData, 10*1024*1024); err != nil {
-			errMsg := "Erro ao validar imagem"
-			switch err {
-			case image.ErrInvalidFormat, image.ErrUnsupportedFormat:
-				errMsg = "Formato de imagem inválido. Use JPEG, PNG, GIF ou WebP."
-			case image.ErrImageTooLarge:
-				errMsg = "Arquivo muito grande. O tamanho máximo é 10MB."
-			default:
-				errMsg = "Erro ao validar imagem: " + err.Error()
-			}
-			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
-			return
-		}
-
-		// Upload para Cloudinary diretamente (sem passar pelo serviço de imagem que requer projectID)
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
-		defer cancel()
-
-		// Gerar publicID único para o avatar usando função específica
-		sanitizedFilename := sanitizeFilename(file.Filename)
-		publicID := cloudinary.BuildPublicIDForAvatar(userID.(string), sanitizedFilename)
-
-		// Upload para Cloudinary
-		uploadResult, err := cloudinary.UploadImage(ctx, fileData, publicID, "")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao fazer upload para Cloudinary: " + err.Error()})
-			return
-		}
-
-		// Atualizar perfil com a URL do avatar
-		err = profile.UpdateProfileAvatar(ctx, userID.(string), uploadResult.SecureURL)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao atualizar avatar"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Avatar atualizado com sucesso", "url": uploadResult.SecureURL})
+	fileData, err := io.ReadAll(src)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao ler arquivo"})
 		return
 	}
 
-	// Fallback: receber URL via JSON (compatibilidade)
-	var req struct {
-		AvatarURL string `json:"avatarUrl" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Arquivo ou URL do avatar é obrigatório"})
+	// Validar imagem
+	if err := image.ValidateImage(fileData, 10*1024*1024); err != nil {
+		errMsg := "Erro ao validar imagem"
+		switch err {
+		case image.ErrInvalidFormat, image.ErrUnsupportedFormat:
+			errMsg = "Formato de imagem inválido. Use JPEG, PNG, GIF ou WebP."
+		case image.ErrImageTooLarge:
+			errMsg = "Arquivo muito grande. O tamanho máximo é 10MB."
+		default:
+			errMsg = "Erro ao validar imagem: " + err.Error()
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	// Upload para Cloudinary diretamente (sem passar pelo serviço de imagem que requer projectID)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
-	err = profile.UpdateProfileAvatar(ctx, userID.(string), req.AvatarURL)
+	// Gerar publicID único para o avatar usando função específica
+	sanitizedFilename := sanitizeFilename(file.Filename)
+	publicID := cloudinary.BuildPublicIDForAvatar(userID.(string), sanitizedFilename)
+
+	// Upload para Cloudinary
+	uploadResult, err := cloudinary.UploadImage(ctx, fileData, publicID, "")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao atualizar avatar"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Erro ao fazer upload para Cloudinary: %s", err.Error()),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Avatar atualizado com sucesso", "url": req.AvatarURL})
+	// Verificar se o perfil existe antes de atualizar
+	_, err = profile.GetProfileByUserID(ctx, userID.(string))
+	if err != nil {
+		if err == profile.ErrProfileNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Perfil público não encontrado. Crie seu perfil público primeiro antes de fazer upload de imagens.",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Erro ao verificar perfil: %s", err.Error()),
+		})
+		return
+	}
+
+	// Atualizar perfil com a URL do avatar
+	err = profile.UpdateProfileAvatar(ctx, userID.(string), uploadResult.SecureURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Erro ao atualizar avatar no perfil: %s", err.Error()),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Avatar atualizado com sucesso", "url": uploadResult.SecureURL})
 }
 
 // uploadProfileCover faz upload da imagem de capa do perfil
@@ -281,102 +266,87 @@ func uploadProfileCover(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form se necessário (Gin faz isso automaticamente, mas vamos garantir)
-	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10MB
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Erro ao processar formulário multipart: " + err.Error(),
-		})
-		return
-	}
-
-	// Tentar receber arquivo primeiro (multipart/form-data)
-	// O Gin automaticamente processa multipart/form-data quando FormFile é chamado
+	// Tentar receber arquivo diretamente (Gin processa multipart automaticamente)
 	file, err := c.FormFile("file")
 	if err != nil {
-		// Se não conseguiu receber arquivo, retornar erro específico
 		contentType := c.GetHeader("Content-Type")
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("Erro ao receber arquivo. Verifique se o campo 'file' está sendo enviado no FormData. Content-Type: %s. Erro: %s", contentType, err.Error()),
+			"error": fmt.Sprintf("Erro ao receber arquivo: %s. Content-Type: %s. Certifique-se de enviar o arquivo via FormData com o campo 'file'.", err.Error(), contentType),
 		})
 		return
 	}
 
-	if file != nil {
-		// Upload de arquivo
-		src, err := file.Open()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Erro ao abrir arquivo"})
-			return
-		}
-		defer src.Close()
+	// Upload de arquivo
+	src, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Erro ao abrir arquivo"})
+		return
+	}
+	defer src.Close()
 
-		fileData, err := io.ReadAll(src)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao ler arquivo"})
-			return
-		}
-
-		// Validar imagem
-		if err := image.ValidateImage(fileData, 10*1024*1024); err != nil {
-			errMsg := "Erro ao validar imagem"
-			switch err {
-			case image.ErrInvalidFormat, image.ErrUnsupportedFormat:
-				errMsg = "Formato de imagem inválido. Use JPEG, PNG, GIF ou WebP."
-			case image.ErrImageTooLarge:
-				errMsg = "Arquivo muito grande. O tamanho máximo é 10MB."
-			default:
-				errMsg = "Erro ao validar imagem: " + err.Error()
-			}
-			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
-			return
-		}
-
-		// Upload para Cloudinary diretamente (sem passar pelo serviço de imagem que requer projectID)
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
-		defer cancel()
-
-		// Gerar publicID único para a capa usando função específica
-		sanitizedFilename := sanitizeFilename(file.Filename)
-		publicID := cloudinary.BuildPublicIDForCover(userID.(string), sanitizedFilename)
-
-		// Upload para Cloudinary
-		uploadResult, err := cloudinary.UploadImage(ctx, fileData, publicID, "")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao fazer upload para Cloudinary: " + err.Error()})
-			return
-		}
-
-		// Atualizar perfil com a URL da imagem de capa
-		err = profile.UpdateProfileCover(ctx, userID.(string), uploadResult.SecureURL)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao atualizar imagem de capa"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Imagem de capa atualizada com sucesso", "url": uploadResult.SecureURL})
+	fileData, err := io.ReadAll(src)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao ler arquivo"})
 		return
 	}
 
-	// Fallback: receber URL via JSON (compatibilidade)
-	var req struct {
-		CoverURL string `json:"coverUrl" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Arquivo ou URL da imagem de capa é obrigatório"})
+	// Validar imagem
+	if err := image.ValidateImage(fileData, 10*1024*1024); err != nil {
+		errMsg := "Erro ao validar imagem"
+		switch err {
+		case image.ErrInvalidFormat, image.ErrUnsupportedFormat:
+			errMsg = "Formato de imagem inválido. Use JPEG, PNG, GIF ou WebP."
+		case image.ErrImageTooLarge:
+			errMsg = "Arquivo muito grande. O tamanho máximo é 10MB."
+		default:
+			errMsg = "Erro ao validar imagem: " + err.Error()
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	// Upload para Cloudinary diretamente (sem passar pelo serviço de imagem que requer projectID)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
-	err = profile.UpdateProfileCover(ctx, userID.(string), req.CoverURL)
+	// Gerar publicID único para a capa usando função específica
+	sanitizedFilename := sanitizeFilename(file.Filename)
+	publicID := cloudinary.BuildPublicIDForCover(userID.(string), sanitizedFilename)
+
+	// Upload para Cloudinary
+	uploadResult, err := cloudinary.UploadImage(ctx, fileData, publicID, "")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao atualizar imagem de capa"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Erro ao fazer upload para Cloudinary: %s", err.Error()),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Imagem de capa atualizada com sucesso", "url": req.CoverURL})
+	// Verificar se o perfil existe antes de atualizar
+	_, err = profile.GetProfileByUserID(ctx, userID.(string))
+	if err != nil {
+		if err == profile.ErrProfileNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Perfil público não encontrado. Crie seu perfil público primeiro antes de fazer upload de imagens.",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Erro ao verificar perfil: %s", err.Error()),
+		})
+		return
+	}
+
+	// Atualizar perfil com a URL da imagem de capa
+	err = profile.UpdateProfileCover(ctx, userID.(string), uploadResult.SecureURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Erro ao atualizar imagem de capa no perfil: %s", err.Error()),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Imagem de capa atualizada com sucesso", "url": uploadResult.SecureURL})
 }
 
 // checkUsernameAvailable verifica se username está disponível
@@ -540,10 +510,16 @@ func getNearbyProfiles(c *gin.Context) {
 }
 
 // sanitizeFilename sanitiza o nome do arquivo para uso seguro
+// Retorna apenas o nome sem extensão, pois o Cloudinary gerencia extensões automaticamente
 func sanitizeFilename(filename string) string {
 	// Remove extension
 	ext := filepath.Ext(filename)
 	name := strings.TrimSuffix(filename, ext)
+	
+	// Se o nome estiver vazio após remover extensão, usar timestamp
+	if name == "" {
+		name = fmt.Sprintf("image-%d", time.Now().Unix())
+	}
 	
 	// Sanitize
 	name = strings.ToLower(name)
@@ -558,6 +534,12 @@ func sanitizeFilename(filename string) string {
 		}
 	}
 	
-	return sanitized.String() + ext
+	// Se ainda estiver vazio, usar timestamp
+	result := sanitized.String()
+	if result == "" {
+		result = fmt.Sprintf("image-%d", time.Now().Unix())
+	}
+	
+	return result
 }
 

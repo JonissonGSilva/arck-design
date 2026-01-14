@@ -1,13 +1,21 @@
 package rest
 
 import (
+	"arck-design/backend/internal/config"
 	"arck-design/backend/internal/services/websocket"
+	"arck-design/backend/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRouter() *gin.Engine {
-	if gin.Mode() == "" {
+	// Configurar modo do Gin baseado no ambiente
+	env := config.AppConfig.Env
+	if env == "development" || env == "dev" {
+		gin.SetMode(gin.DebugMode)
+		utils.Debug("Gin mode: DEBUG")
+	} else {
 		gin.SetMode(gin.ReleaseMode)
+		utils.Info("Gin mode: RELEASE")
 	}
 
 	router := gin.Default()

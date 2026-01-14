@@ -168,6 +168,12 @@ func UpdateProfileAvatar(ctx context.Context, userID, avatarURL string) error {
 		return ErrInvalidData
 	}
 
+	// Verificar se o perfil existe
+	_, err = GetProfileByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
 	update := bson.M{
 		"$set": bson.M{
 			"avatar":    avatarURL,
@@ -175,12 +181,22 @@ func UpdateProfileAvatar(ctx context.Context, userID, avatarURL string) error {
 		},
 	}
 
-	_, err = database.PublicProfilesCollection.UpdateOne(
+	result, err := database.PublicProfilesCollection.UpdateOne(
 		ctx,
 		bson.M{"userId": userObjID},
 		update,
 	)
-	return err
+	
+	if err != nil {
+		return err
+	}
+	
+	// Verificar se algum documento foi atualizado
+	if result.MatchedCount == 0 {
+		return ErrProfileNotFound
+	}
+	
+	return nil
 }
 
 // UpdateProfileCover atualiza a imagem de capa do perfil
@@ -190,6 +206,12 @@ func UpdateProfileCover(ctx context.Context, userID, coverURL string) error {
 		return ErrInvalidData
 	}
 
+	// Verificar se o perfil existe
+	_, err = GetProfileByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
 	update := bson.M{
 		"$set": bson.M{
 			"coverImage": coverURL,
@@ -197,12 +219,22 @@ func UpdateProfileCover(ctx context.Context, userID, coverURL string) error {
 		},
 	}
 
-	_, err = database.PublicProfilesCollection.UpdateOne(
+	result, err := database.PublicProfilesCollection.UpdateOne(
 		ctx,
 		bson.M{"userId": userObjID},
 		update,
 	)
-	return err
+	
+	if err != nil {
+		return err
+	}
+	
+	// Verificar se algum documento foi atualizado
+	if result.MatchedCount == 0 {
+		return ErrProfileNotFound
+	}
+	
+	return nil
 }
 
 // ============================================

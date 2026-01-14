@@ -1,6 +1,7 @@
 package cloudinary
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -65,7 +66,10 @@ func UploadImage(ctx context.Context, fileData []byte, publicID string, folder s
 		ResourceType: "image",
 	}
 
-	result, err := cld.Upload.Upload(ctx, fileData, params)
+	// Converter []byte para io.Reader usando bytes.NewReader
+	fileReader := bytes.NewReader(fileData)
+	
+	result, err := cld.Upload.Upload(ctx, fileReader, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to Cloudinary: %w", err)
 	}
