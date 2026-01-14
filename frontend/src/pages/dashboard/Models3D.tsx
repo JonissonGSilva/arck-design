@@ -52,7 +52,15 @@ const Models3D: React.FC = () => {
       limit: 50,
     })
     if (response.data) {
-      setModels(response.data.data || [])
+      // Mapear modelos garantindo que as URLs estejam corretas
+      const mappedModels = (response.data.data || []).map((model: any) => ({
+        ...model,
+        // Garantir que originalUrl e webUrl estejam mapeados corretamente
+        originalUrl: model.originalUrl || model.OriginalURL || '',
+        webUrl: model.webUrl || model.WebURL || '',
+        thumbnailUrl: model.thumbnailUrl || model.ThumbnailURL || '',
+      }))
+      setModels(mappedModels)
     }
     setIsLoading(false)
   }
@@ -145,9 +153,74 @@ const Models3D: React.FC = () => {
     }
   }
 
-  const handleView = (model: ModelFile) => {
-    setSelectedModel(model)
+  const handleView = async (model: ModelFile) => {
+    // Normalizar URLs (compatibilidade com backend que pode retornar maiúsculas)
+    const webUrl = model.webUrl || (model as any).WebURL || ''
+    const originalUrl = model.originalUrl || (model as any).OriginalURL || ''
+    
+    // Se o modelo não tiver URL, tentar recarregar os dados
+    if (model.status === 'ready' && !webUrl && !originalUrl) {
+      try {
+        const response = await model3dService.getById(model.id)
+        if (response.data) {
+          const updatedModel = {
+            ...response.data,
+            originalUrl: response.data.originalUrl || (response.data as any).OriginalURL || '',
+            webUrl: response.data.webUrl || (response.data as any).WebURL || '',
+          }
+          setSelectedModel(updatedModel)
+        } else {
+          setSelectedModel(model)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar detalhes do modelo:', error)
+        setSelectedModel(model)
+      }
+    } else {
+      // Garantir que o modelo tenha as URLs normalizadas
+      setSelectedModel({
+        ...model,
+        originalUrl,
+        webUrl,
+      })
+    }
     setShowViewerModal(true)
+  }
+
+  const handleDownload = async (model: ModelFile, format: 'original' | 'web' = 'web') => {
+    try {
+      const response = await model3dService.getDownloadInfo(model.id, format)
+      if (response.data?.url) {
+        // Abrir URL de download em nova aba
+        window.open(response.data.url, '_blank')
+        showToast('Download iniciado', 'success')
+      } else {
+        // Fallback: usar URL direta do modelo (compatibilidade com maiúsculas)
+        const webUrl = model.webUrl || (model as any).WebURL || ''
+        const originalUrl = model.originalUrl || (model as any).OriginalURL || ''
+        const downloadUrl = format === 'web' && webUrl ? webUrl : originalUrl
+        
+        if (downloadUrl) {
+          window.open(downloadUrl, '_blank')
+          showToast('Download iniciado', 'success')
+        } else {
+          showToast('URL de download não disponível', 'error')
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao fazer download:', error)
+      // Fallback: usar URL direta do modelo (compatibilidade com maiúsculas)
+      const webUrl = model.webUrl || (model as any).WebURL || ''
+      const originalUrl = model.originalUrl || (model as any).OriginalURL || ''
+      const downloadUrl = format === 'web' && webUrl ? webUrl : originalUrl
+      
+      if (downloadUrl) {
+        window.open(downloadUrl, '_blank')
+        showToast('Download iniciado', 'success')
+      } else {
+        showToast('Erro ao fazer download', 'error')
+      }
+    }
   }
 
   const formatFileSize = (bytes: number): string => {
@@ -458,30 +531,109 @@ const Models3D: React.FC = () => {
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
           <div className="w-full h-full max-w-6xl max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="flex justify-between items-center p-4 text-white">
+            <div className="flex justify-between items-center p-4 text-white bg-black/50">
               <div>
                 <h2 className="text-xl font-bold">{selectedModel.title}</h2>
                 <p className="text-sm text-gray-400">
                   {selectedModel.originalFormat.toUpperCase()} • {formatFileSize(selectedModel.originalSize)}
                 </p>
               </div>
-              <button
-                onClick={() => setShowViewerModal(false)}
-                className="p-2 hover:bg-white/10 rounded transition"
-              >
-                <Close />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Download Button */}
+                {selectedModel.status === 'ready' && (
+                  <div className="flex gap-2">
+                    {(selectedModel.webUrl || (selectedModel as any).WebURL) && (
+                      <button
+                        onClick={() => handleDownload(selectedModel, 'web')}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition flex items-center gap-2"
+                        title="Download formato web (GLB/GLTF)"
+                      >
+                        <Download className="text-base" />
+                        <span className="text-sm">Download Web</span>
+                      </button>
+                    )}
+                    {(selectedModel.originalUrl || (selectedModel as any).OriginalURL) && (
+                      <button
+                        onClick={() => handleDownload(selectedModel, 'original')}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition flex items-center gap-2"
+                        title="Download formato original"
+                      >
+                        <Download className="text-base" />
+                        <span className="text-sm">Download Original</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowViewerModal(false)}
+                  className="p-2 hover:bg-white/10 rounded transition"
+                >
+                  <Close />
+                </button>
+              </div>
             </div>
 
             {/* Viewer */}
             <div className="flex-1">
-              <Model3DViewer
-                modelUrl={selectedModel.webUrl || selectedModel.originalUrl}
-                backgroundColor={selectedModel.backgroundColor || '#1a1a2e'}
-                lighting={selectedModel.defaultLighting as any || 'studio'}
-                autoRotate
-                showControls
-              />
+              {selectedModel.status === 'ready' ? (
+                (() => {
+                  // Tentar obter URL de diferentes formas (compatibilidade com backend)
+                  const webUrl = selectedModel.webUrl || (selectedModel as any).WebURL || ''
+                  const originalUrl = selectedModel.originalUrl || (selectedModel as any).OriginalURL || ''
+                  const modelUrl = webUrl || originalUrl
+                  
+                  if (modelUrl) {
+                    return (
+                      <Model3DViewer
+                        modelUrl={modelUrl}
+                        backgroundColor={selectedModel.backgroundColor || '#1a1a2e'}
+                        lighting={selectedModel.defaultLighting as any || 'studio'}
+                        autoRotate
+                        showControls
+                      />
+                    )
+                  }
+                  
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-white">
+                      <Palette className="text-6xl mb-4 text-gray-400" />
+                      <p className="text-lg mb-2">URL do modelo não disponível</p>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Status: {getStatusLabel(selectedModel.status)}
+                      </p>
+                      {/* Sempre mostrar botões de download se houver URLs disponíveis */}
+                      <div className="flex gap-2">
+                        {webUrl && (
+                          <button
+                            onClick={() => handleDownload(selectedModel, 'web')}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition flex items-center gap-2"
+                          >
+                            <Download className="text-base" />
+                            <span>Download Web</span>
+                          </button>
+                        )}
+                        {originalUrl && (
+                          <button
+                            onClick={() => handleDownload(selectedModel, 'original')}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition flex items-center gap-2"
+                          >
+                            <Download className="text-base" />
+                            <span>Download Original</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-white">
+                  <Palette className="text-6xl mb-4 text-gray-400" />
+                  <p className="text-lg mb-2">Modelo ainda não está pronto para visualização</p>
+                  <p className="text-sm text-gray-400">
+                    Status: {getStatusLabel(selectedModel.status)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

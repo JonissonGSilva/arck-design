@@ -312,6 +312,44 @@ const LayoutPreview = ({ profile, customization }: LayoutPreviewProps) => {
     )
   }
 
+  // Render 3D Models Section
+  const render3DModels = () => {
+    if (!customization.show3DModels) return null
+
+    const sample3DModels = [
+      { id: '1', title: 'Modelo 3D - Residência', thumbnail: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=200&h=200&fit=crop' },
+      { id: '2', title: 'Modelo 3D - Escritório', thumbnail: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&h=200&fit=crop' },
+      { id: '3', title: 'Modelo 3D - Loft', thumbnail: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=200&h=200&fit=crop' },
+    ]
+
+    return (
+      <div className={`border-t ${borderClass}`}>
+        <div className="px-3 pt-3 pb-1">
+          <h3 className={`font-semibold text-xs ${textClass}`}>Modelos 3D</h3>
+        </div>
+        <div className="p-3">
+          <div className="grid grid-cols-3 gap-2">
+            {sample3DModels.map((model) => (
+              <div 
+                key={model.id}
+                className={`relative aspect-square rounded-lg overflow-hidden ${cardBgClass} border ${borderClass} group cursor-pointer`}
+              >
+                <img 
+                  src={model.thumbnail} 
+                  alt={model.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                  <p className="text-white text-[10px] font-medium truncate w-full">{model.title}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Render Contact Section
   const renderContact = () => {
     if (!customization.showContact) return null
@@ -365,6 +403,9 @@ const LayoutPreview = ({ profile, customization }: LayoutPreviewProps) => {
         </div>
         {renderProjects()}
       </div>
+
+      {/* 3D Models */}
+      {render3DModels()}
 
       {/* Contact */}
       {renderContact()}

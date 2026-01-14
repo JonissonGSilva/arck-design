@@ -24,6 +24,7 @@ export interface ProfileCustomization {
   showServices: boolean      // Mostrar serviços
   showReviews: boolean       // Mostrar avaliações
   showContact: boolean       // Mostrar informações de contato
+  show3DModels: boolean      // Mostrar projetos 3D
   primaryColor?: string      // Cor primária customizada
   backgroundStyle?: 'light' | 'dark' | 'gradient'
   heroStyle?: 'full' | 'compact' | 'minimal'
@@ -106,6 +107,7 @@ export const DEFAULT_CUSTOMIZATION: ProfileCustomization = {
   showServices: true,
   showReviews: true,
   showContact: true,
+  show3DModels: true,
   backgroundStyle: 'light',
   heroStyle: 'full',
   projectCardStyle: 'simple',

@@ -154,6 +154,7 @@ const LayoutCustomizer = ({ customization = DEFAULT_CUSTOMIZATION, onChange }: L
               { key: 'showServices', label: 'Mostrar Serviços', description: 'Lista os serviços que você oferece' },
               { key: 'showReviews', label: 'Mostrar Avaliações', description: 'Exibe avaliações de clientes anteriores' },
               { key: 'showContact', label: 'Mostrar Contato', description: 'Exibe informações de contato (email, telefone, etc)' },
+              { key: 'show3DModels', label: 'Mostrar Projetos 3D', description: 'Exibe seus modelos 3D no perfil público' },
             ].map((item) => (
               <label
                 key={item.key}

@@ -30,6 +30,8 @@ const ClientMessages: React.FC = () => {
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
   const [isInitializingConversation, setIsInitializingConversation] = useState(false)
+  const [messages, setMessages] = useState<any[]>([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
 
   useEffect(() => {
     loadConversations()
@@ -54,9 +56,35 @@ const ClientMessages: React.FC = () => {
     try {
       const response = await messageService.getConversations()
       if (response.data) {
-        setConversations(response.data as unknown as Conversation[])
+        // Mapear conversas garantindo que otherUser sempre exista
+        const mappedConversations: Conversation[] = (response.data as any[]).map((conv: any) => {
+          // Determinar qual é o outro usuário (arquiteto, já que o cliente está visualizando)
+          const otherUser = conv.architect || conv.otherParticipant || conv.otherUser || {
+            id: conv.architectId || '',
+            name: 'Arquiteto',
+            avatar: undefined
+          }
+          
+          return {
+            id: conv.id,
+            otherUser: {
+              id: otherUser.id || conv.architectId || '',
+              name: otherUser.name || otherUser.displayName || 'Arquiteto',
+              avatar: otherUser.avatar || undefined
+            },
+            lastMessage: conv.lastMessage ? {
+              content: conv.lastMessage.text || conv.lastMessage.content || '',
+              createdAt: conv.lastMessage.createdAt || conv.lastMessageAt || new Date().toISOString()
+            } : undefined,
+            unreadCount: typeof conv.unreadCount === 'object' 
+              ? (conv.unreadCount.client || conv.unreadCount[conv.id] || 0)
+              : (conv.unreadCount || 0)
+          }
+        })
+        setConversations(mappedConversations)
       }
-    } catch {
+    } catch (error) {
+      console.error('Erro ao carregar conversas:', error)
       showToast('Erro ao carregar conversas', 'error')
     } finally {
       setIsLoading(false)
@@ -71,7 +99,7 @@ const ClientMessages: React.FC = () => {
       
       // Verificar se já existe uma conversa com este arquiteto
       const existingConversation = conversations.find(
-        (conv) => conv.otherUser.id === architectId
+        (conv) => conv.otherUser?.id === architectId
       )
 
       if (existingConversation) {
@@ -93,7 +121,7 @@ const ClientMessages: React.FC = () => {
             setConversations(updatedConversations)
             
             const newConversation = updatedConversations.find(
-              (conv) => conv.otherUser.id === architectId
+              (conv) => conv.otherUser?.id === architectId
             )
             
             if (newConversation) {
@@ -148,7 +176,7 @@ const ClientMessages: React.FC = () => {
       const sanitizedMessage = sanitizeText(messageText.trim(), ['\n', ' ', '.', ',', '!', '?', '-', ':', ';', '(', ')'])
       const limitedMessage = limitLength(sanitizedMessage, 5000) // Limite de mensagem
 
-      const response = await messageService.sendMessage(conversation.otherUser.id, limitedMessage)
+      const response = await messageService.sendMessage(conversation.otherUser?.id || '', limitedMessage)
       if (response.data) {
         setMessageText('')
         loadConversations()
@@ -198,15 +226,15 @@ const ClientMessages: React.FC = () => {
                 }`}
               >
                 <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {conv.otherUser.avatar ? (
+                  {conv.otherUser?.avatar ? (
                     <img src={conv.otherUser.avatar} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-xl">{conv.otherUser.name.charAt(0).toUpperCase()}</span>
+                    <span className="text-xl">{(conv.otherUser?.name || 'A').charAt(0).toUpperCase()}</span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
-                    <span className="font-medium text-gray-900 truncate">{conv.otherUser.name}</span>
+                    <span className="font-medium text-gray-900 truncate">{conv.otherUser?.name || 'Arquiteto'}</span>
                     {conv.lastMessage && (
                       <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                         {formatDate(conv.lastMessage.createdAt)}
@@ -250,9 +278,9 @@ const ClientMessages: React.FC = () => {
                     ←
                   </button>
                   <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                    {conversations.find(c => c.id === selectedConversation)?.otherUser.avatar ? (
+                    {conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar ? (
                       <img 
-                        src={conversations.find(c => c.id === selectedConversation)?.otherUser.avatar} 
+                        src={conversations.find(c => c.id === selectedConversation)?.otherUser?.avatar} 
                         alt=""
                         className="w-full h-full object-cover"
                       />
@@ -262,7 +290,7 @@ const ClientMessages: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {conversations.find(c => c.id === selectedConversation)?.otherUser.name || 'Conversa'}
+                      {conversations.find(c => c.id === selectedConversation)?.otherUser?.name || 'Conversa'}
                     </p>
                     <p className="text-sm text-gray-500">Arquiteto</p>
                   </div>

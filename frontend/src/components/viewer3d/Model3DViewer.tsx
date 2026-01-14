@@ -168,55 +168,104 @@ const Model3DViewer: React.FC<Model3DViewerProps> = ({
   const loadModel = useCallback(() => {
     if (!sceneRef.current) return
 
+    if (!modelUrl || modelUrl.trim() === '') {
+      const errorMessage = 'URL do modelo não fornecida'
+      setError(errorMessage)
+      setIsLoading(false)
+      onError?.(errorMessage)
+      return
+    }
+
     setIsLoading(true)
     setError(null)
+    setLoadProgress(0)
 
     const loader = new GLTFLoader()
 
     loader.load(
       modelUrl,
       (gltf) => {
-        // Remover modelo anterior
-        if (modelRef.current) {
-          sceneRef.current?.remove(modelRef.current)
-        }
-
-        const model = gltf.scene
-        modelRef.current = model
-
-        // Centralizar e escalar modelo
-        const box = new THREE.Box3().setFromObject(model)
-        const center = box.getCenter(new THREE.Vector3())
-        const size = box.getSize(new THREE.Vector3())
-        const maxDim = Math.max(size.x, size.y, size.z)
-        const scale = 3 / maxDim
-        
-        model.scale.setScalar(scale)
-        model.position.sub(center.multiplyScalar(scale))
-
-        // Configurar sombras
-        model.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.castShadow = true
-            child.receiveShadow = true
+        try {
+          // Remover modelo anterior
+          if (modelRef.current) {
+            sceneRef.current?.remove(modelRef.current)
           }
-        })
 
-        sceneRef.current?.add(model)
-        setIsLoading(false)
-        onLoad?.()
+          const model = gltf.scene
+          modelRef.current = model
+
+          // Centralizar e escalar modelo
+          const box = new THREE.Box3().setFromObject(model)
+          const center = box.getCenter(new THREE.Vector3())
+          const size = box.getSize(new THREE.Vector3())
+          const maxDim = Math.max(size.x, size.y, size.z)
+          
+          if (maxDim > 0) {
+            const scale = 3 / maxDim
+            model.scale.setScalar(scale)
+            model.position.sub(center.multiplyScalar(scale))
+          } else {
+            // Se não conseguir calcular dimensões, apenas centralizar
+            model.position.set(0, 0, 0)
+          }
+
+          // Configurar sombras
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true
+              child.receiveShadow = true
+            }
+          })
+
+          sceneRef.current?.add(model)
+          setLoadProgress(100)
+          setIsLoading(false)
+          onLoad?.()
+        } catch (err) {
+          const errorMessage = 'Erro ao processar modelo 3D'
+          setError(errorMessage)
+          setIsLoading(false)
+          onError?.(errorMessage)
+          console.error('Erro ao processar modelo:', err)
+        }
       },
       (xhr) => {
-        const progress = Math.round((xhr.loaded / xhr.total) * 100)
+        // Calcular progresso de forma segura
+        let progress = 0
+        if (xhr.total && xhr.total > 0) {
+          progress = Math.round((xhr.loaded / xhr.total) * 100)
+        } else if (xhr.loaded > 0) {
+          // Se não temos total, mostrar progresso indeterminado mas não 0%
+          progress = Math.min(95, 10 + Math.round(xhr.loaded / 100000)) // Estimativa baseada em KB
+        } else {
+          // Início do carregamento
+          progress = 5
+        }
         setLoadProgress(progress)
         onProgress?.(progress)
       },
       (err) => {
-        const errorMessage = 'Erro ao carregar modelo 3D'
+        let errorMessage = 'Erro ao carregar modelo 3D'
+        
+        // Mensagens de erro mais específicas
+        if (err.message) {
+          if (err.message.includes('404') || err.message.includes('Not Found')) {
+            errorMessage = 'Modelo não encontrado. Verifique se a URL está correta.'
+          } else if (err.message.includes('CORS') || err.message.includes('Network')) {
+            errorMessage = 'Erro de conexão. Verifique se o servidor está acessível e permite CORS.'
+          } else if (err.message.includes('Failed to load')) {
+            errorMessage = 'Falha ao carregar o arquivo. Verifique se o formato é suportado (GLB/GLTF).'
+          } else {
+            errorMessage = `Erro: ${err.message}`
+          }
+        }
+        
         setError(errorMessage)
         setIsLoading(false)
+        setLoadProgress(0)
         onError?.(errorMessage)
         console.error('Erro ao carregar modelo:', err)
+        console.error('URL tentada:', modelUrl)
       }
     )
   }, [modelUrl, onLoad, onError, onProgress])
@@ -282,9 +331,23 @@ const Model3DViewer: React.FC<Model3DViewerProps> = ({
 
   // Carregar modelo quando URL mudar
   useEffect(() => {
-    if (modelUrl && sceneRef.current) {
-      loadModel()
+    if (!modelUrl || modelUrl.trim() === '') {
+      setError('URL do modelo não fornecida')
+      setIsLoading(false)
+      return
     }
+
+    if (!sceneRef.current) {
+      // Aguardar a cena ser inicializada
+      const timer = setTimeout(() => {
+        if (sceneRef.current) {
+          loadModel()
+        }
+      }, 200)
+      return () => clearTimeout(timer)
+    }
+
+    loadModel()
   }, [modelUrl, loadModel])
 
   return (
