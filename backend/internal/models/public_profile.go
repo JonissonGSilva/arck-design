@@ -88,6 +88,7 @@ type ProfileCustomization struct {
 	ShowServices     bool              `bson:"showServices" json:"showServices"`     // Mostrar serviços
 	ShowReviews      bool              `bson:"showReviews" json:"showReviews"`       // Mostrar avaliações
 	ShowContact      bool              `bson:"showContact" json:"showContact"`       // Mostrar informações de contato
+	Show3DModels     bool              `bson:"show3DModels" json:"show3DModels"`     // Mostrar projetos 3D
 	PrimaryColor     string            `bson:"primaryColor,omitempty" json:"primaryColor,omitempty"`     // Cor primária customizada
 	BackgroundStyle  string            `bson:"backgroundStyle,omitempty" json:"backgroundStyle,omitempty"` // light, dark, gradient
 	HeroStyle        string            `bson:"heroStyle,omitempty" json:"heroStyle,omitempty"`       // full, compact, minimal
