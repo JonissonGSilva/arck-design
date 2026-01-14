@@ -25,6 +25,8 @@ export { geolocationService } from './geolocation.service'
 export { settingsService } from './settings.service'
 export { servicesService } from './services.service'
 export type { Service, ServiceCategory, ServiceStats, CreateServiceRequest, UpdateServiceRequest, ServiceFilters } from './services.service'
+export { notificationService } from './notification.service'
+export type { Notification, NotificationType, NotificationPreferences } from './notification.service'
 
 // Re-exportar tipos principais (apenas da API)
 export type * from '../types/api'

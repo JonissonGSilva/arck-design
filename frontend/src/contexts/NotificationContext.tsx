@@ -1,23 +1,18 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { notificationService } from '../services'
+import type { Notification as NotificationType } from '../services/notification.service'
 
-export interface Notification {
-  id: string
-  title: string
-  message: string
-  type: 'info' | 'success' | 'warning' | 'error'
-  read: boolean
-  createdAt: Date
-  link?: string
-}
+// Usar o tipo do serviço
+export type { Notification as Notification } from '../services/notification.service'
 
 interface NotificationContextType {
-  notifications: Notification[]
+  notifications: NotificationType[]
   unreadCount: number
-  addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void
-  markAsRead: (id: string) => void
-  markAllAsRead: () => void
-  deleteNotification: (id: string) => void
-  clearAll: () => void
+  isLoading: boolean
+  markAsRead: (id: string) => Promise<void>
+  markAllAsRead: () => Promise<void>
+  deleteNotification: (id: string) => Promise<void>
+  refreshNotifications: () => Promise<void>
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
@@ -31,80 +26,110 @@ export const useNotifications = () => {
 }
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Novo Cliente',
-      message: 'João Silva enviou uma solicitação de orçamento',
-      type: 'info',
-      read: false,
-      createdAt: new Date(Date.now() - 3600000),
-      link: '/architect/messages',
-    },
-    {
-      id: '2',
-      title: 'Projeto Aprovado',
-      message: 'Residência Oliveira foi aprovado pelo cliente',
-      type: 'success',
-      read: false,
-      createdAt: new Date(Date.now() - 7200000),
-      link: '/architect/projects',
-    },
-    {
-      id: '3',
-      title: 'Reunião Agendada',
-      message: 'Reunião com Família Oliveira amanhã às 14:00',
-      type: 'warning',
-      read: true,
-      createdAt: new Date(Date.now() - 86400000),
-      link: '/architect/calendar',
-    },
-  ])
+  const [notifications, setNotifications] = useState<NotificationType[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
 
-  const unreadCount = notifications.filter(n => !n.read).length
-
-  const addNotification = (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      read: false,
-      createdAt: new Date(),
+  // Carregar notificações
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const response = await notificationService.listNotifications({ limit: 50 })
+      if (response.data) {
+        setNotifications(response.data.data || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar notificações:', error)
+    } finally {
+      setIsLoading(false)
     }
-    setNotifications(prev => [newNotification, ...prev])
-  }
+  }, [])
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    )
-  }
+  // Carregar contagem de não lidas
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const response = await notificationService.getUnreadCount()
+      if (response.data) {
+        setUnreadCount(response.data.unreadCount || 0)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar contagem de não lidas:', error)
+    }
+  }, [])
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, read: true }))
-    )
-  }
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadNotifications()
+    loadUnreadCount()
+    
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(() => {
+      loadUnreadCount()
+    }, 30000)
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id))
-  }
+    return () => clearInterval(interval)
+  }, [loadNotifications, loadUnreadCount])
 
-  const clearAll = () => {
-    setNotifications([])
-  }
+  const markAsRead = useCallback(async (id: string) => {
+    try {
+      const response = await notificationService.markAsRead(id)
+      if (!response.error) {
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === id ? { ...notif, read: true, readAt: new Date().toISOString() } : notif
+          )
+        )
+        setUnreadCount(prev => Math.max(0, prev - 1))
+      }
+    } catch (error) {
+      console.error('Erro ao marcar notificação como lida:', error)
+    }
+  }, [])
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const response = await notificationService.markAllAsRead()
+      if (!response.error) {
+        setNotifications(prev =>
+          prev.map(notif => ({ ...notif, read: true, readAt: new Date().toISOString() }))
+        )
+        setUnreadCount(0)
+      }
+    } catch (error) {
+      console.error('Erro ao marcar todas como lidas:', error)
+    }
+  }, [])
+
+  const deleteNotification = useCallback(async (id: string) => {
+    try {
+      const response = await notificationService.deleteNotification(id)
+      if (!response.error) {
+        const notification = notifications.find(n => n.id === id)
+        setNotifications(prev => prev.filter(notif => notif.id !== id))
+        if (notification && !notification.read) {
+          setUnreadCount(prev => Math.max(0, prev - 1))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao deletar notificação:', error)
+    }
+  }, [notifications])
+
+  const refreshNotifications = useCallback(async () => {
+    await loadNotifications()
+    await loadUnreadCount()
+  }, [loadNotifications, loadUnreadCount])
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
-        addNotification,
+        isLoading,
         markAsRead,
         markAllAsRead,
         deleteNotification,
-        clearAll,
+        refreshNotifications,
       }}
     >
       {children}

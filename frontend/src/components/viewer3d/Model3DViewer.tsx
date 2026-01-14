@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { Warning, CenterFocusStrong, RotateRight, Fullscreen, FullscreenExit, Mouse, ZoomIn, PanTool } from '@mui/icons-material'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -303,7 +304,7 @@ const Model3DViewer: React.FC<Model3DViewerProps> = ({
       {/* Error overlay */}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10">
-          <div className="text-red-500 text-4xl mb-4">⚠️</div>
+          <Warning className="text-red-500 text-4xl mb-4" />
           <p className="text-white text-sm mb-4">{error}</p>
           <button
             onClick={loadModel}
@@ -322,31 +323,40 @@ const Model3DViewer: React.FC<Model3DViewerProps> = ({
             className="p-2 bg-white/10 hover:bg-white/20 rounded text-white text-sm transition"
             title="Resetar câmera"
           >
-            🎯
+            <CenterFocusStrong />
           </button>
           <button
             onClick={toggleAutoRotate}
             className="p-2 bg-white/10 hover:bg-white/20 rounded text-white text-sm transition"
             title="Auto-rotação"
           >
-            🔄
+            <RotateRight />
           </button>
           <button
             onClick={toggleFullscreen}
             className="p-2 bg-white/10 hover:bg-white/20 rounded text-white text-sm transition"
             title="Tela cheia"
           >
-            {isFullscreen ? '⬜' : '⬛'}
+            {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
           </button>
         </div>
       )}
 
       {/* Instructions */}
       {showControls && !isLoading && !error && (
-        <div className="absolute top-4 left-4 text-white/60 text-xs z-10">
-          <p>🖱️ Arraste para rotacionar</p>
-          <p>🔍 Scroll para zoom</p>
-          <p>➡️ Shift+arraste para mover</p>
+        <div className="absolute top-4 left-4 text-white/60 text-xs z-10 space-y-1">
+          <p className="flex items-center gap-1">
+            <Mouse className="text-xs" />
+            Arraste para rotacionar
+          </p>
+          <p className="flex items-center gap-1">
+            <ZoomIn className="text-xs" />
+            Scroll para zoom
+          </p>
+          <p className="flex items-center gap-1">
+            <PanTool className="text-xs" />
+            Shift+arraste para mover
+          </p>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 // ============================================
 
 import { api } from './api'
-import type { PublicProfile, ApiResponse } from '../types/api'
+import type { PublicProfile, ApiResponse, PaginatedResponse } from '../types/api'
 
 // ============================================
 // TIPOS
@@ -25,8 +25,11 @@ export const favoritesService = {
   /**
    * Listar arquitetos favoritos
    */
-  async listFavorites(): Promise<ApiResponse<Favorite[]>> {
-    return api.get<Favorite[]>('/favorites')
+  async listFavorites(page: number = 1, limit: number = 50): Promise<ApiResponse<PaginatedResponse<Favorite>>> {
+    const params = new URLSearchParams()
+    params.append('page', page.toString())
+    params.append('limit', limit.toString())
+    return api.get<PaginatedResponse<Favorite>>(`/favorites?${params.toString()}`)
   },
 
   /**

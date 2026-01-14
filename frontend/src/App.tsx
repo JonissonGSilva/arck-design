@@ -6,7 +6,6 @@ import { ToastProvider } from './contexts/ToastContext'
 import ToastContainer from './components/common/ToastContainer'
 import ScrollToTop from './components/common/ScrollToTop'
 import ErrorBoundary from './components/common/ErrorBoundary'
-import SessionExpiredModal from './components/common/SessionExpiredModal'
 import OnboardingTour from './components/common/OnboardingTour'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
@@ -46,13 +45,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <ToastProvider>
-              <Router>
+        <Router>
+          <AuthProvider>
+            <NotificationProvider>
+              <ToastProvider>
                 <ScrollToTop />
                 <OnboardingTour />
-                <SessionExpiredModal />
                 <Routes>
                   {/* Public Routes with Header/Footer */}
                   <Route
@@ -120,11 +118,11 @@ function App() {
                     }
                   />
                 </Routes>
-              </Router>
-              <ToastContainer />
-            </ToastProvider>
-          </NotificationProvider>
-        </AuthProvider>
+                <ToastContainer />
+              </ToastProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </Router>
       </ThemeProvider>
     </ErrorBoundary>
   )

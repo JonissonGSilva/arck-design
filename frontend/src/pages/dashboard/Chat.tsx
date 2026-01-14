@@ -3,6 +3,7 @@ import { Search, Send, Paperclip, MoreVertical, Phone, Video, ArrowLeft } from '
 import { useNavigate } from 'react-router-dom'
 import { messageService } from '../../services'
 import { useToast } from '../../contexts/ToastContext'
+import LoadingButton from '../../components/common/LoadingButton'
 
 interface Contact {
   id: string
@@ -312,13 +313,17 @@ const Chat = () => {
                     disabled={sendingMessage}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
                   />
-                  <button
+                  <LoadingButton
                     onClick={handleSendMessage}
-                    disabled={sendingMessage || !messageText.trim()}
-                    className="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    loading={sendingMessage}
+                    variant="primary"
+                    size="sm"
+                    disabled={!messageText.trim()}
+                    className="p-2"
+                    icon={<Send className="h-5 w-5" />}
                   >
-                    <Send className="h-5 w-5" />
-                  </button>
+                    <span className="sr-only">Enviar</span>
+                  </LoadingButton>
                 </div>
               </div>
             </>

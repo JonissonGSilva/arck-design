@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
+import { Warning, Refresh, Home } from '@mui/icons-material'
 
 interface Props {
   children: ReactNode
@@ -55,7 +56,7 @@ class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 flex items-center justify-center px-4">
           <div className="max-w-lg w-full text-center">
             {/* Ícone de erro */}
-            <div className="text-6xl mb-6">⚠️</div>
+            <Warning className="text-6xl mb-6 text-yellow-500 mx-auto" />
 
             {/* Mensagem */}
             <h1 className="text-3xl font-bold text-white mb-4">
@@ -78,15 +79,17 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={this.handleReload}
-                className="px-6 py-3 bg-stone-700 text-white rounded-lg hover:bg-stone-600 transition-colors"
+                className="px-6 py-3 bg-stone-700 text-white rounded-lg hover:bg-stone-600 transition-colors flex items-center justify-center gap-2"
               >
-                🔄 Recarregar página
+                <Refresh />
+                Recarregar página
               </button>
               <button
                 onClick={this.handleGoHome}
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
               >
-                🏠 Ir para a Home
+                <Home />
+                Ir para a Home
               </button>
             </div>
 

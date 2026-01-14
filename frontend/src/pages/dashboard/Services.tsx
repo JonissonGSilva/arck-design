@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, DollarSign, Clock, Building2, ArrowLeft, CheckCircle, Loader2, X, Power } from 'lucide-react'
+import { Plus, Edit, Trash2, DollarSign, Clock, Building2, ArrowLeft, CheckCircle, X, Power, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { servicesService } from '../../services'
 import type { Service, CreateServiceRequest, ServiceCategory, ServiceStats } from '../../services/services.service'
 import { useToast } from '../../contexts/ToastContext'
+import LoadingButton from '../../components/common/LoadingButton'
+import ConfirmModal from '../../components/common/ConfirmModal'
 
 const Services = () => {
   const navigate = useNavigate()
@@ -14,6 +16,10 @@ const Services = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState<CreateServiceRequest>({
@@ -92,25 +98,42 @@ const Services = () => {
     setSaving(false)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este serviço?')) return
+  const handleDeleteClick = (id: string) => {
+    setServiceToDelete(id)
+    setShowDeleteConfirm(true)
+  }
 
-    const response = await servicesService.delete(id)
-    if (response.data) {
-      showToast('Serviço excluído com sucesso!', 'success')
-      loadData()
-    } else if (response.error) {
-      showToast(response.error, 'error')
+  const handleDelete = async () => {
+    if (!serviceToDelete) return
+
+    setDeletingId(serviceToDelete)
+    try {
+      const response = await servicesService.delete(serviceToDelete)
+      if (response.data) {
+        showToast('Serviço excluído com sucesso!', 'success')
+        loadData()
+        setShowDeleteConfirm(false)
+        setServiceToDelete(null)
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+    } finally {
+      setDeletingId(null)
     }
   }
 
   const handleToggleActive = async (id: string) => {
-    const response = await servicesService.toggleActive(id)
-    if (response.data) {
-      showToast(response.data.message, 'success')
-      loadData()
-    } else if (response.error) {
-      showToast(response.error, 'error')
+    setTogglingId(id)
+    try {
+      const response = await servicesService.toggleActive(id)
+      if (response.data) {
+        showToast(response.data.message, 'success')
+        loadData()
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -187,7 +210,7 @@ const Services = () => {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/architect/dashboard')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 rounded-lg"
         >
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </button>
@@ -198,7 +221,7 @@ const Services = () => {
           </div>
           <button 
             onClick={openNewModal}
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors font-semibold flex items-center gap-2 w-fit"
+            className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 w-fit"
           >
             <Plus className="h-5 w-5" />
             Novo Serviço
@@ -208,7 +231,7 @@ const Services = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-primary-50 rounded-lg">
               <Building2 className="h-6 w-6 text-primary-600" />
@@ -218,7 +241,7 @@ const Services = () => {
           <p className="text-sm text-gray-600">Total de Serviços</p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-green-50 rounded-lg">
               <DollarSign className="h-6 w-6 text-green-600" />
@@ -230,7 +253,7 @@ const Services = () => {
           <p className="text-sm text-gray-600">Ticket Médio</p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-50 rounded-lg">
               <CheckCircle className="h-6 w-6 text-blue-600" />
@@ -242,7 +265,7 @@ const Services = () => {
           <p className="text-sm text-gray-600">Serviços Ativos</p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-accent-50 rounded-lg">
               <DollarSign className="h-6 w-6 text-accent-600" />
@@ -261,7 +284,7 @@ const Services = () => {
           {services.map((service) => (
             <div
               key={service.id}
-              className={`bg-white rounded-xl p-6 border border-gray-200 hover:shadow-xl transition-all hover:-translate-y-1 ${!service.active ? 'opacity-60' : ''}`}
+              className={`bg-white rounded-xl p-6 border border-gray-200 ${!service.active ? 'opacity-60' : ''}`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -279,27 +302,36 @@ const Services = () => {
                 </div>
 
                 <div className="flex items-center gap-2 ml-4">
-                  <button 
+                  <LoadingButton
                     onClick={() => handleToggleActive(service.id)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
+                    loading={togglingId === service.id}
+                    variant="ghost"
+                    size="sm"
+                    className="p-2 rounded-lg" 
                     title={service.active ? 'Desativar' : 'Ativar'}
+                    icon={<Power className={`h-5 w-5 ${service.active ? 'text-green-600' : 'text-gray-400'}`} />}
                   >
-                    <Power className={`h-5 w-5 ${service.active ? 'text-green-600' : 'text-gray-400'}`} />
-                  </button>
+                    <span className="sr-only">{service.active ? 'Desativar' : 'Ativar'}</span>
+                  </LoadingButton>
                   <button 
                     onClick={() => openEditModal(service)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
+                    disabled={deletingId === service.id || togglingId === service.id}
+                    className="p-2 rounded-lg disabled:opacity-50" 
                     title="Editar"
                   >
                     <Edit className="h-5 w-5 text-gray-600" />
                   </button>
-                  <button 
-                    onClick={() => handleDelete(service.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
+                  <LoadingButton
+                    onClick={() => handleDeleteClick(service.id)}
+                    loading={deletingId === service.id}
+                    variant="ghost"
+                    size="sm"
+                    className="p-2 rounded-lg" 
                     title="Excluir"
+                    icon={<Trash2 className="h-5 w-5 text-red-600" />}
                   >
-                    <Trash2 className="h-5 w-5 text-red-600" />
-                  </button>
+                    <span className="sr-only">Excluir</span>
+                  </LoadingButton>
                 </div>
               </div>
               
@@ -345,7 +377,7 @@ const Services = () => {
           <p className="text-gray-500 mb-4">Você ainda não tem serviços cadastrados</p>
           <button
             onClick={openNewModal}
-            className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold"
+            className="inline-flex items-center gap-2 text-primary-600 font-semibold"
           >
             <Plus className="h-5 w-5" />
             Criar primeiro serviço
@@ -361,7 +393,7 @@ const Services = () => {
             {categories.map((category) => (
               <div
                 key={category}
-                className="bg-white p-3 rounded-lg border border-gray-200 text-center hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white p-3 rounded-lg border border-gray-200 text-center cursor-pointer"
               >
                 <p className="text-sm font-semibold text-gray-900">{servicesService.getCategoryLabel(category)}</p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -383,7 +415,7 @@ const Services = () => {
               </h3>
               <button
                 onClick={closeModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 rounded-lg"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -477,7 +509,7 @@ const Services = () => {
                   <button
                     type="button"
                     onClick={addFeature}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
                   >
                     <Plus className="h-5 w-5" />
                   </button>
@@ -490,7 +522,7 @@ const Services = () => {
                         <button
                           type="button"
                           onClick={() => removeFeature(index)}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -504,28 +536,40 @@ const Services = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={closeModal}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg disabled:opacity-50"
               >
                 Cancelar
               </button>
-              <button
+              <LoadingButton
                 onClick={handleSubmit}
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                loading={saving}
+                variant="primary"
+                fullWidth
+                className="flex-1"
               >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  editingService ? 'Salvar Alterações' : 'Criar Serviço'
-                )}
-              </button>
+                {editingService ? 'Salvar Alterações' : 'Criar Serviço'}
+              </LoadingButton>
             </div>
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false)
+          setServiceToDelete(null)
+        }}
+        onConfirm={handleDelete}
+        title="Excluir Serviço"
+        message="Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={deletingId !== null}
+      />
     </div>
   )
 }

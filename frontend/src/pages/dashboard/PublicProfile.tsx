@@ -13,12 +13,12 @@ import VisibilityIcon from '@mui/icons-material/Visibility'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import CloseIcon from '@mui/icons-material/Close'
 import AddIcon from '@mui/icons-material/Add'
-import Loader2Icon from '@mui/icons-material/Autorenew'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { profileService, DEFAULT_CUSTOMIZATION } from '../../services'
 import type { ProfileCustomization, PublicProfile as ProfileServicePublicProfile } from '../../services/profile.service'
+import LoadingButton from '../../components/common/LoadingButton'
 
 type PublicProfileType = ProfileServicePublicProfile
 import LayoutCustomizer from '../../components/profile/LayoutCustomizer'
@@ -257,7 +257,7 @@ const PublicProfile = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2Icon className="animate-spin h-8 w-8 text-primary-600" />
+        <div className="animate-spin h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -697,23 +697,16 @@ const PublicProfile = () => {
               >
                 Cancelar
               </button>
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                loading={isSaving}
+                variant="primary"
+                size="lg"
+                icon={<SaveIcon sx={{ fontSize: 18 }} />}
+                className="px-4 md:px-6 py-2 md:py-3 font-semibold text-sm"
               >
-                {isSaving ? (
-                  <>
-                    <Loader2Icon className="animate-spin" sx={{ fontSize: 18 }} />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <SaveIcon sx={{ fontSize: 18 }} />
-                    {profileExists ? 'Salvar Alterações' : 'Criar Perfil'}
-                  </>
-                )}
-              </button>
+                {profileExists ? 'Salvar Alterações' : 'Criar Perfil'}
+              </LoadingButton>
             </div>
           </form>
         </div>

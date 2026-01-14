@@ -22,7 +22,7 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
 
   const navItems = [
     { path: '/client/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/client/projects', icon: FolderTree, label: 'Meus Projetos' },
+    { path: '/client/projects', icon: FolderTree, label: 'Projetos Contratados' },
     { path: '/client/favorites', icon: Heart, label: 'Favoritos' },
     { path: '/client/messages', icon: MessageSquare, label: 'Mensagens' },
     { path: '/client/bookings', icon: Calendar, label: 'Agendamentos' },

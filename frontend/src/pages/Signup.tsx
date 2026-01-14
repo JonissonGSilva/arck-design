@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { Mail, Lock, User, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { isStrongPassword } from '../services'
 import type { UserRole } from '../types/api'
+import LoadingButton from '../components/common/LoadingButton'
 
 const Signup = () => {
   const { showToast } = useToast()
@@ -55,6 +56,8 @@ const Signup = () => {
       return
     }
 
+    console.log('[Signup] Enviando registro com accountType:', formData.accountType)
+    
     const result = await register(
       formData.email,
       formData.password,
@@ -315,24 +318,21 @@ const Signup = () => {
             </div>
 
             {/* Submit Button */}
-            <button
+            <LoadingButton
               type="submit"
-              disabled={isLoading || !acceptTerms || !passwordValidation.valid || formData.password !== formData.confirmPassword}
-              className={`w-full py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+              loading={isLoading}
+              variant={formData.accountType === 'arquiteto' ? 'primary' : 'secondary'}
+              fullWidth
+              size="lg"
+              disabled={!acceptTerms || !passwordValidation.valid || formData.password !== formData.confirmPassword}
+              className={`w-full font-semibold shadow-lg hover:shadow-xl ${
                 formData.accountType === 'arquiteto'
-                  ? 'bg-primary-600 hover:bg-primary-700 text-white'
-                  : 'bg-accent-500 hover:bg-accent-600 text-white'
+                  ? 'bg-primary-600 hover:bg-primary-700'
+                  : 'bg-accent-500 hover:bg-accent-600'
               }`}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Criando conta...
-                </>
-              ) : (
-                'Criar conta gratuitamente'
-              )}
-            </button>
+              Criar conta gratuitamente
+            </LoadingButton>
           </form>
         </div>
 

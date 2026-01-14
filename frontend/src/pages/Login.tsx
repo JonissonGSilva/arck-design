@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Lock, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle, Loader2 } from 'lucide-react'
+import { Mail, Lock, Building2, Eye, EyeOff, Briefcase, Ruler, AlertCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import type { UserRole } from '../types/api'
+import LoadingButton from '../components/common/LoadingButton'
 
 const Login = () => {
   // DEBUG: Log quando o componente renderiza
@@ -244,24 +245,20 @@ const Login = () => {
             </div>
 
             {/* Submit Button */}
-            <button
+            <LoadingButton
               type="submit"
-              disabled={isLoading}
-              className={`w-full py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+              loading={isLoading}
+              variant={userType === 'arquiteto' ? 'primary' : 'secondary'}
+              fullWidth
+              size="lg"
+              className={`w-full font-semibold shadow-lg hover:shadow-xl ${
                 userType === 'arquiteto'
-                  ? 'bg-primary-600 hover:bg-primary-700 text-white'
-                  : 'bg-accent-500 hover:bg-accent-600 text-white'
+                  ? 'bg-primary-600 hover:bg-primary-700'
+                  : 'bg-accent-500 hover:bg-accent-600'
               }`}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                'Entrar'
-              )}
-            </button>
+              Entrar
+            </LoadingButton>
           </form>
         </div>
 

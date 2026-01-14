@@ -89,6 +89,8 @@ export const authService = {
       role,
     }
 
+    console.log('[authService.register] Enviando request:', { ...request, password: '***' })
+
     const response = await api.post<AuthPayload>('/auth/register', request, {
       requiresAuth: false,
     })

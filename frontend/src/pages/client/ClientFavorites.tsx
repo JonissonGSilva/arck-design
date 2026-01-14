@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Favorite, Star } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
 import { favoritesService } from '../../services'
@@ -19,6 +20,7 @@ const ClientFavorites: React.FC = () => {
   const { showToast } = useToast()
   const [favorites, setFavorites] = useState<FavoriteArchitect[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [, setRemovingId] = useState<string | null>(null)
 
   useEffect(() => {
     loadFavorites()
@@ -27,11 +29,30 @@ const ClientFavorites: React.FC = () => {
   const loadFavorites = async () => {
     setIsLoading(true)
     try {
-      const response = await favoritesService.listFavorites()
-      if (response.data) {
+      const response = await favoritesService.listFavorites(1, 50)
+      if (response.data && Array.isArray(response.data.data)) {
+        // Transformar dados do backend para o formato esperado
+        const favoritesData = response.data.data.map((fav: any) => {
+          const profile = fav.profile || fav.architect
+          return {
+            id: fav.architectId || fav.id || '',
+            username: profile?.username || '',
+            displayName: profile?.displayName || profile?.name || '',
+            avatar: profile?.avatar,
+            city: profile?.location?.address?.city,
+            state: profile?.location?.address?.state,
+            specialties: profile?.specialties || [],
+            rating: profile?.rating || 0,
+            reviewCount: profile?.reviewsCount || profile?.reviewCount || 0,
+          } as FavoriteArchitect
+        })
+        setFavorites(favoritesData)
+      } else if (response.data && Array.isArray(response.data)) {
+        // Fallback: se a resposta for um array direto
         setFavorites(response.data as unknown as FavoriteArchitect[])
       }
-    } catch {
+    } catch (error) {
+      console.error('Erro ao carregar favoritos:', error)
       showToast('Erro ao carregar favoritos', 'error')
     } finally {
       setIsLoading(false)
@@ -39,12 +60,15 @@ const ClientFavorites: React.FC = () => {
   }
 
   const handleRemoveFavorite = async (architectId: string) => {
+    setRemovingId(architectId)
     try {
       await favoritesService.removeFavorite(architectId)
       setFavorites(prev => prev.filter(f => f.id !== architectId))
       showToast('Arquiteto removido dos favoritos', 'success')
     } catch {
       showToast('Erro ao remover dos favoritos', 'error')
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -65,7 +89,7 @@ const ClientFavorites: React.FC = () => {
 
       {favorites.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-          <div className="text-6xl mb-4">❤️</div>
+          <Favorite className="text-6xl mb-4 text-red-400 mx-auto" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             Nenhum favorito ainda
           </h3>
@@ -76,7 +100,7 @@ const ClientFavorites: React.FC = () => {
             to="/explore"
             className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
-            Explorar Arquitetos
+            Descobrir Arquitetos
           </Link>
         </div>
       ) : (
@@ -106,7 +130,7 @@ const ClientFavorites: React.FC = () => {
                   className="p-2 text-red-500 hover:bg-red-50 rounded-full transition"
                   title="Remover dos favoritos"
                 >
-                  ❤️
+                  <Favorite className="text-xl" />
                 </button>
               </div>
 
@@ -121,7 +145,7 @@ const ClientFavorites: React.FC = () => {
 
               {/* Rating */}
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-yellow-500">⭐</span>
+                <Star className="text-yellow-500" />
                 <span className="font-medium">{architect.rating?.toFixed(1) || '—'}</span>
                 <span className="text-gray-400">({architect.reviewCount || 0} avaliações)</span>
               </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { Chat, Person, Email, Send } from '@mui/icons-material'
 import { useToast } from '../../contexts/ToastContext'
 import { messageService } from '../../services'
+import LoadingButton from '../../components/common/LoadingButton'
 
 interface Conversation {
   id: string
@@ -21,6 +23,8 @@ const ClientMessages: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [messageText, setMessageText] = useState('')
+  const [sendingMessage, setSendingMessage] = useState(false)
 
   useEffect(() => {
     loadConversations()
@@ -55,6 +59,25 @@ const ClientMessages: React.FC = () => {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   }
 
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedConversation || sendingMessage) return
+
+    setSendingMessage(true)
+    try {
+      const response = await messageService.sendMessage(selectedConversation, messageText.trim())
+      if (response.data) {
+        setMessageText('')
+        loadConversations()
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+    } catch {
+      showToast('Erro ao enviar mensagem', 'error')
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 flex justify-center">
@@ -73,7 +96,7 @@ const ClientMessages: React.FC = () => {
 
         {conversations.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="text-5xl mb-4">💬</div>
+            <Chat className="text-5xl mb-4 text-gray-400" />
             <h3 className="font-semibold text-gray-900 mb-2">Nenhuma conversa</h3>
             <p className="text-gray-500 text-sm">
               Inicie uma conversa com um arquiteto para tirar dúvidas ou solicitar orçamentos.
@@ -133,7 +156,7 @@ const ClientMessages: React.FC = () => {
                 ←
               </button>
               <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                👤
+                <Person className="text-gray-600" />
               </div>
               <div>
                 <p className="font-medium text-gray-900">
@@ -153,18 +176,29 @@ const ClientMessages: React.FC = () => {
               <div className="flex gap-2">
                 <input
                   type="text"
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !sendingMessage && messageText.trim() && handleSendMessage()}
                   placeholder="Digite sua mensagem..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  disabled={sendingMessage}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
                 />
-                <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                  Enviar
-                </button>
+                <LoadingButton
+                  onClick={handleSendMessage}
+                  loading={sendingMessage}
+                  variant="primary"
+                  size="md"
+                  disabled={!messageText.trim()}
+                  icon={<Send className="h-5 w-5" />}
+                >
+                  <span className="hidden sm:inline">Enviar</span>
+                </LoadingButton>
               </div>
             </div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-            <div className="text-6xl mb-4">📨</div>
+            <Email className="text-6xl mb-4 text-gray-400" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Selecione uma conversa</h3>
             <p className="text-gray-500">Escolha uma conversa na lista para ver as mensagens</p>
           </div>

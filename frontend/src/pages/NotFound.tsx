@@ -1,4 +1,5 @@
 import React from 'react'
+import { Home as HomeIcon } from '@mui/icons-material'
 import { Link, useNavigate } from 'react-router-dom'
 
 const NotFound: React.FC = () => {
@@ -10,7 +11,7 @@ const NotFound: React.FC = () => {
         {/* Ilustração 404 */}
         <div className="mb-8">
           <div className="text-9xl font-bold text-primary-500/20 select-none">404</div>
-          <div className="text-6xl -mt-16 mb-4">🏚️</div>
+          <HomeIcon className="text-6xl -mt-16 mb-4 text-gray-400 mx-auto" />
         </div>
 
         {/* Mensagem */}

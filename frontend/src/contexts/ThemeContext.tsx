@@ -27,15 +27,26 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
 
+  // Apply dark mode immediately on mount
+  useEffect(() => {
+    const root = document.documentElement
+    if (isDarkMode) {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+  }, [])
+
   useEffect(() => {
     // Save to localStorage
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode))
     
     // Apply to document
+    const root = document.documentElement
     if (isDarkMode) {
-      document.documentElement.classList.add('dark')
+      root.classList.add('dark')
     } else {
-      document.documentElement.classList.remove('dark')
+      root.classList.remove('dark')
     }
   }, [isDarkMode])
 

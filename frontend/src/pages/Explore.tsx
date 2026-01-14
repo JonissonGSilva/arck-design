@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CheckCircle } from '@mui/icons-material'
 import { Search, MapPin, Star, Building2, Filter, ChevronDown, ArrowLeft } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { exploreService } from '../services'
@@ -246,13 +247,15 @@ const Explore = () => {
                     <span className="font-semibold text-sm">{formatRating(architect)}</span>
                   </div>
                   {architect.boost?.active && (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 rounded-full text-white text-xs font-semibold shadow-lg">
-                      ⭐ Destaque
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 rounded-full text-white text-xs font-semibold shadow-lg flex items-center gap-1">
+                      <Star className="text-xs" />
+                      Destaque
                     </div>
                   )}
                   {architect.verification?.verified && (
                     <div className="absolute bottom-4 left-4 bg-green-500 px-2 py-1 rounded-full text-white text-xs font-semibold shadow-lg flex items-center gap-1">
-                      ✓ Verificado
+                      <CheckCircle className="text-xs" />
+                      Verificado
                     </div>
                   )}
                 </div>

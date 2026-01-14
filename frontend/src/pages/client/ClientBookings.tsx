@@ -4,12 +4,17 @@ import { calendarService } from '../../services'
 import type { Event } from '../../services/calendar.service'
 import { Calendar, Clock, MapPin, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import LoadingButton from '../../components/common/LoadingButton'
+import ConfirmModal from '../../components/common/ConfirmModal'
 
 const ClientBookings: React.FC = () => {
   const { showToast } = useToast()
   const [bookings, setBookings] = useState<Event[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming')
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [bookingToCancel, setBookingToCancel] = useState<string | null>(null)
 
   useEffect(() => {
     loadBookings()
@@ -61,15 +66,27 @@ const ClientBookings: React.FC = () => {
     }
   }
 
-  const handleCancelBooking = async (eventId: string) => {
-    if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return
+  const handleCancelClick = (eventId: string) => {
+    setBookingToCancel(eventId)
+    setShowCancelConfirm(true)
+  }
 
-    const response = await calendarService.updateEventStatus(eventId, 'cancelado')
-    if (response.data) {
-      showToast('Agendamento cancelado com sucesso', 'success')
-      loadBookings()
-    } else if (response.error) {
-      showToast(response.error, 'error')
+  const handleCancelBooking = async () => {
+    if (!bookingToCancel) return
+
+    setCancellingId(bookingToCancel)
+    try {
+      const response = await calendarService.updateEventStatus(bookingToCancel, 'cancelado')
+      if (response.data) {
+        showToast('Agendamento cancelado com sucesso', 'success')
+        loadBookings()
+        setShowCancelConfirm(false)
+        setBookingToCancel(null)
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+    } finally {
+      setCancellingId(null)
     }
   }
 
@@ -158,7 +175,7 @@ const ClientBookings: React.FC = () => {
             to="/explore"
             className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
-            Explorar Arquitetos
+            Descobrir Arquitetos
           </Link>
         </div>
       ) : (
@@ -205,7 +222,7 @@ const ClientBookings: React.FC = () => {
                 <div className="flex gap-2">
                   {booking.status === 'pendente' && (
                     <button 
-                      onClick={() => handleCancelBooking(booking.id)}
+                      onClick={() => handleCancelClick(booking.id)}
                       className="px-4 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
                     >
                       Cancelar
@@ -213,12 +230,15 @@ const ClientBookings: React.FC = () => {
                   )}
                   {booking.status === 'confirmado' && (
                     <>
-                      <button 
-                        onClick={() => handleCancelBooking(booking.id)}
-                        className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                      <LoadingButton
+                        onClick={() => handleCancelClick(booking.id)}
+                        loading={cancellingId === booking.id}
+                        variant="outline"
+                        size="sm"
+                        className="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200"
                       >
                         Cancelar
-                      </button>
+                      </LoadingButton>
                     </>
                   )}
                 </div>
@@ -227,6 +247,22 @@ const ClientBookings: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Cancel Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        onClose={() => {
+          setShowCancelConfirm(false)
+          setBookingToCancel(null)
+        }}
+        onConfirm={handleCancelBooking}
+        title="Cancelar Agendamento"
+        message="Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita."
+        confirmText="Cancelar Agendamento"
+        cancelText="Manter"
+        variant="warning"
+        loading={cancellingId !== null}
+      />
     </div>
   )
 }

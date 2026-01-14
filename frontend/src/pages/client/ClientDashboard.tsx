@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderTree, Calendar, Building2, ArrowRight, Plus, Loader2 } from 'lucide-react'
+import { FolderTree, Calendar, Building2, ArrowRight, Plus, Loader2, Heart, Search, MessageSquare } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../../services'
 import type { ClientStats, ClientProject, UpcomingEvent } from '../../services/dashboard.service'
@@ -19,7 +19,7 @@ const ClientDashboard = () => {
     try {
       const [statsRes, projectsRes, appointmentsRes] = await Promise.all([
         dashboardService.getClientStats(),
-        dashboardService.getClientProjects(4),
+        dashboardService.getClientProjects(3),
         dashboardService.getClientAppointments(3),
       ])
 
@@ -87,59 +87,124 @@ const ClientDashboard = () => {
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Bem-vindo de volta!</h1>
-        <p className="text-gray-600 mt-2">Acompanhe seus projetos e reuniões agendadas</p>
+        <p className="text-gray-600 mt-2">Explore arquitetos, acompanhe seus projetos e organize suas reuniões</p>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link
+          to="/explore"
+          className="bg-gradient-to-br from-primary-600 to-primary-700 p-6 rounded-xl text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/20 rounded-lg">
+              <Search className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Descobrir Arquitetos</h3>
+              <p className="text-primary-100 text-sm">Encontre o profissional ideal</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          to="/client/favorites"
+          className="bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-red-50 rounded-lg">
+              <Heart className="h-6 w-6 text-red-600 fill-red-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg text-gray-900">Favoritos</h3>
+              <p className="text-gray-600 text-sm">{stats?.favoriteArchitects || 0} arquitetos salvos</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          to="/client/messages"
+          className="bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <MessageSquare className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg text-gray-900">Mensagens</h3>
+              <p className="text-gray-600 text-sm">Converse com arquitetos</p>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Link
+          to="/client/projects"
+          className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Projetos Ativos</p>
+              <p className="text-sm text-gray-600 mb-1">Projetos Contratados</p>
               <p className="text-3xl font-bold text-gray-900">{stats?.activeProjects || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">Em andamento</p>
             </div>
             <div className="p-3 bg-primary-50 rounded-lg">
               <FolderTree className="h-8 w-8 text-primary-600" />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Link
+          to="/client/bookings"
+          className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Próximas Reuniões</p>
               <p className="text-3xl font-bold text-gray-900">{stats?.upcomingMeetings ?? 0}</p>
+              <p className="text-xs text-gray-500 mt-1">Agendamentos</p>
             </div>
             <div className="p-3 bg-accent-50 rounded-lg">
               <Calendar className="h-8 w-8 text-accent-600" />
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Link
+          to="/client/favorites"
+          className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Arquitetos Favoritos</p>
               <p className="text-3xl font-bold text-gray-900">{stats?.favoriteArchitects || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">Salvos para referência</p>
             </div>
-            <div className="p-3 bg-green-50 rounded-lg">
-              <Building2 className="h-8 w-8 text-green-600" />
+            <div className="p-3 bg-red-50 rounded-lg">
+              <Heart className="h-8 w-8 text-red-600 fill-red-600" />
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Recent Projects */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Projetos Recentes</h2>
-          <Link 
-            to="/client/projects"
-            className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center gap-1"
-          >
-            Ver todos
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Projetos em Andamento</h2>
+            <p className="text-sm text-gray-600 mt-1">Acompanhe o progresso dos seus projetos com arquitetos</p>
+          </div>
+          {projects.length > 0 && (
+            <Link 
+              to="/client/projects"
+              className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center gap-1"
+            >
+              Ver todos
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
 
         {projects.length > 0 ? (
@@ -241,20 +306,21 @@ const ClientDashboard = () => {
         )}
       </div>
 
-      {/* CTA */}
+      {/* CTA - Explore Architects */}
       <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl p-8 text-white shadow-lg">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Precisa de um arquiteto?</h2>
+            <h2 className="text-2xl font-bold mb-2">Encontre o arquiteto ideal</h2>
             <p className="text-primary-100">
-              Explore nossa comunidade de profissionais e encontre o arquiteto perfeito para seu projeto.
+              Explore nossa comunidade de profissionais, compare portfólios e encontre o arquiteto perfeito para seu projeto.
             </p>
           </div>
           <Link
             to="/explore"
             className="bg-white text-primary-600 px-8 py-3 rounded-lg hover:bg-primary-50 transition-colors font-semibold whitespace-nowrap flex items-center gap-2"
           >
-            Buscar Arquitetos
+            <Search className="h-5 w-5" />
+            Descobrir Arquitetos
             <ArrowRight className="h-5 w-5" />
           </Link>
         </div>

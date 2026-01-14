@@ -188,11 +188,19 @@ export const model3dService = {
         resolve({ error: 'Erro de rede' })
       })
 
-      const token = localStorage.getItem('accessToken')
-      xhr.open('POST', `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}/models3d/upload`)
+      const token = localStorage.getItem('arckdesign_access_token')
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+      xhr.open('POST', `${apiBaseUrl}/models3d/upload`)
+      xhr.timeout = 600000 // 10 minutos para uploads grandes
+      
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`)
       }
+      
+      xhr.addEventListener('timeout', () => {
+        resolve({ error: 'Tempo limite do upload excedido. Tente novamente com um arquivo menor.' })
+      })
+      
       xhr.send(formData)
     })
   },

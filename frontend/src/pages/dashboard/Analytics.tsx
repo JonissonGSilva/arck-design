@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { BarChart, Lightbulb, Check } from '@mui/icons-material'
 import { useToast } from '../../contexts/ToastContext'
 import { analyticsService } from '../../services'
 
@@ -79,7 +80,7 @@ const Analytics: React.FC = () => {
 
       {!overview ? (
         <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-          <div className="text-6xl mb-4">📊</div>
+          <BarChart className="text-6xl mb-4 text-gray-400 mx-auto" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             Nenhum dado disponível
           </h3>
@@ -195,22 +196,25 @@ const Analytics: React.FC = () => {
 
             {/* Quick Tips */}
             <div className="bg-gradient-to-br from-primary-500 to-primary-700 p-6 rounded-xl text-white">
-              <h3 className="text-lg font-semibold mb-4">💡 Dicas para melhorar</h3>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Lightbulb className="text-xl" />
+                Dicas para melhorar
+              </h3>
               <ul className="space-y-3 text-sm">
                 <li className="flex items-start gap-2">
-                  <span>✓</span>
+                  <Check className="text-sm mt-0.5" />
                   <span>Adicione mais projetos ao seu portfólio para atrair mais visitantes</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span>✓</span>
+                  <Check className="text-sm mt-0.5" />
                   <span>Complete seu perfil com todas as informações para gerar mais confiança</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span>✓</span>
+                  <Check className="text-sm mt-0.5" />
                   <span>Responda rapidamente às mensagens para aumentar sua taxa de conversão</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span>✓</span>
+                  <Check className="text-sm mt-0.5" />
                   <span>Adicione modelos 3D dos seus projetos para se destacar</span>
                 </li>
               </ul>

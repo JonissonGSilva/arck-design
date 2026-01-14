@@ -86,7 +86,26 @@ export const calendarService = {
     const queryString = params.toString()
     const endpoint = queryString ? `/events?${queryString}` : '/events'
 
-    return api.get<Event[]>(endpoint)
+    const response = await api.get<{ data: Event[]; total: number; page: number; limit: number; totalPages: number }>(endpoint)
+    
+    // Extrair o array de eventos do objeto de resposta
+    if (response.data && 'data' in response.data) {
+      return {
+        data: Array.isArray(response.data.data) ? response.data.data : [],
+        error: response.error
+      }
+    }
+    
+    // Fallback: se a resposta já for um array direto
+    if (Array.isArray(response.data)) {
+      return response as unknown as ApiResponse<Event[]>
+    }
+    
+    // Se não for nem objeto com data nem array, retornar array vazio
+    return {
+      data: [],
+      error: response.error || 'Formato de resposta inválido'
+    }
   },
 
   /**

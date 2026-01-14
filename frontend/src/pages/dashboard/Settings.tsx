@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { useToast } from '../../contexts/ToastContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { settingsService, type NotificationSettings, type Preferences, type PrivacySettings, type UserProfile } from '../../services/settings.service'
+import LoadingButton from '../../components/common/LoadingButton'
 
 const Settings = () => {
   const navigate = useNavigate()
@@ -511,15 +512,17 @@ const Settings = () => {
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Autenticação de Dois Fatores</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Adicione uma camada extra de segurança à sua conta
-                </p>
-                <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  Ativar 2FA
-                </button>
-              </div>
+              {profile.phone && profile.phone.trim() !== '' && (
+                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Autenticação de Dois Fatores</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Adicione uma camada extra de segurança à sua conta
+                  </p>
+                  <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    Ativar 2FA
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -575,7 +578,21 @@ const Settings = () => {
                     <input
                       type="checkbox"
                       checked={isDarkMode}
-                      onChange={(e) => setDarkMode(e.target.checked)}
+                      onChange={async (e) => {
+                        const newValue = e.target.checked
+                        setDarkMode(newValue)
+                        // Salvar automaticamente nas preferências
+                        try {
+                          const updatedPreferences: Preferences = {
+                            ...preferences,
+                            theme: newValue ? 'dark' : 'light',
+                          }
+                          await settingsService.updatePreferences(updatedPreferences)
+                          setPreferences(updatedPreferences)
+                        } catch (error) {
+                          console.error('Erro ao salvar preferência de tema:', error)
+                        }
+                      }}
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
@@ -602,18 +619,15 @@ const Settings = () => {
 
           {/* Save Button */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-            <button
+            <LoadingButton
               onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              loading={isSaving}
+              variant="primary"
+              size="lg"
+              icon={<Save className="h-5 w-5" />}
             >
-              {isSaving ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Save className="h-5 w-5" />
-              )}
-              {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-            </button>
+              Salvar Alterações
+            </LoadingButton>
           </div>
         </div>
       </div>

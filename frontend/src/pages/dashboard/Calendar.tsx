@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, User, ArrowLeft, Loader2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, User, ArrowLeft, X, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { calendarService } from '../../services'
 import type { Event, CreateEventRequest, EventType, EventLocation } from '../../services/calendar.service'
 import { useToast } from '../../contexts/ToastContext'
+import LoadingButton from '../../components/common/LoadingButton'
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -12,6 +13,7 @@ const Calendar = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
 
@@ -46,9 +48,14 @@ const Calendar = () => {
     })
 
     if (response.data) {
-      setEvents(response.data)
+      // Garantir que response.data seja um array
+      const eventsData = Array.isArray(response.data) ? response.data : []
+      setEvents(eventsData)
     } else if (response.error) {
       showToast(response.error, 'error')
+    } else {
+      // Se não houver dados nem erro, definir array vazio
+      setEvents([])
     }
 
     setLoading(false)
@@ -92,18 +99,28 @@ const Calendar = () => {
     setSaving(false)
   }
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este evento?')) return
+  const handleDeleteClick = async (eventId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este evento?')) {
+      return
+    }
 
-    const response = await calendarService.deleteEvent(eventId)
+    setDeletingId(eventId)
+    try {
+      const response = await calendarService.deleteEvent(eventId)
 
-    if (response.data) {
-      showToast('Evento excluído com sucesso!', 'success')
-      loadEvents()
-    } else if (response.error) {
-      showToast(response.error, 'error')
+      if (response.data) {
+        showToast('Evento excluído com sucesso!', 'success')
+        loadEvents()
+      } else if (response.error) {
+        showToast(response.error, 'error')
+      }
+    } catch {
+      showToast('Erro ao excluir evento', 'error')
+    } finally {
+      setDeletingId(null)
     }
   }
+
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
@@ -167,13 +184,16 @@ const Calendar = () => {
 
   const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
+  // Garantir que events seja sempre um array
+  const eventsArray = Array.isArray(events) ? events : []
+  
   const filteredEvents = selectedDate 
-    ? events.filter(e => {
+    ? eventsArray.filter(e => {
         const eventDate = new Date(e.date).toISOString().split('T')[0]
         const selectedStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
         return eventDate === selectedStr
       })
-    : events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5)
+    : [...eventsArray].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5)
 
   const openNewEventModal = () => {
     if (selectedDate) {
@@ -191,7 +211,7 @@ const Calendar = () => {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/architect/dashboard')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 rounded-lg"
         >
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </button>
@@ -201,7 +221,7 @@ const Calendar = () => {
         </div>
         <button 
           onClick={openNewEventModal}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <Plus className="h-5 w-5" />
           <span className="hidden md:inline">Novo Evento</span>
@@ -224,19 +244,19 @@ const Calendar = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={previousMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 rounded-lg"
                 >
                   <ChevronLeft className="h-5 w-5 text-gray-600" />
                 </button>
                 <button
                   onClick={() => setCurrentDate(new Date())}
-                  className="px-3 py-1 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  className="px-3 py-1 text-sm text-primary-600 rounded-lg"
                 >
                   Hoje
                 </button>
                 <button
                   onClick={nextMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 rounded-lg"
                 >
                   <ChevronRight className="h-5 w-5 text-gray-600" />
                 </button>
@@ -274,12 +294,12 @@ const Calendar = () => {
                   <button
                     key={day}
                     onClick={() => setSelectedDate(dateObj)}
-                    className={`aspect-square p-2 rounded-lg border transition-all hover:shadow-md ${
+                    className={`aspect-square p-2 rounded-lg border ${
                       isSelected
                         ? 'border-primary-500 bg-primary-50'
                         : isToday
                         ? 'border-primary-300 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200'
                     }`}
                   >
                     <div className="flex flex-col h-full">
@@ -327,7 +347,7 @@ const Calendar = () => {
                 filteredEvents.map((event) => (
                   <div
                     key={event.id}
-                    className={`p-4 rounded-lg border-2 ${getTypeColor(event.type)} hover:shadow-md transition-all`}
+                    className={`p-4 rounded-lg border-2 ${getTypeColor(event.type)}`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-sm">{event.title}</h3>
@@ -350,12 +370,15 @@ const Calendar = () => {
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2">
-                      <button
-                        onClick={() => handleDeleteEvent(event.id)}
-                        className="text-xs text-red-600 hover:text-red-700"
+                      <LoadingButton
+                        onClick={() => handleDeleteClick(event.id)}
+                        loading={deletingId === event.id}
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-red-600 p-1 min-w-0"
                       >
                         Excluir
-                      </button>
+                      </LoadingButton>
                     </div>
                   </div>
                 ))
@@ -364,7 +387,7 @@ const Calendar = () => {
                   <p>Nenhum evento {selectedDate ? 'para esta data' : 'agendado'}</p>
                   <button
                     onClick={openNewEventModal}
-                    className="mt-2 text-primary-600 hover:text-primary-700 font-medium text-sm"
+                    className="mt-2 text-primary-600 font-medium text-sm"
                   >
                     Criar evento
                   </button>
@@ -383,7 +406,7 @@ const Calendar = () => {
               <h3 className="text-lg font-bold text-gray-900">Novo Evento</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 rounded-lg"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -507,24 +530,20 @@ const Calendar = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg disabled:opacity-50"
               >
                 Cancelar
               </button>
-              <button
+              <LoadingButton
                 onClick={handleCreateEvent}
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                loading={saving}
+                variant="primary"
+                fullWidth
+                className="flex-1"
               >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  'Criar Evento'
-                )}
-              </button>
+                Criar Evento
+              </LoadingButton>
             </div>
           </div>
         </div>
@@ -534,3 +553,5 @@ const Calendar = () => {
 }
 
 export default Calendar
+
+

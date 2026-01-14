@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { Palette, Download, Visibility, Delete, Inventory, Close } from '@mui/icons-material'
 import { model3dService, MODEL_CATEGORIES } from '../../services'
 import type { ModelFile, ModelStats } from '../../services/model3d.service'
 import Model3DViewer from '../../components/viewer3d/Model3DViewer'
 import { useToast } from '../../contexts/ToastContext'
+import LoadingButton from '../../components/common/LoadingButton'
+import ConfirmModal from '../../components/common/ConfirmModal'
 
 // ============================================
 // COMPONENTE PRINCIPAL
@@ -20,6 +23,10 @@ const Models3D: React.FC = () => {
   const [showViewerModal, setShowViewerModal] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [filterCategory, setFilterCategory] = useState<string>('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [retryingId, setRetryingId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [modelToDelete, setModelToDelete] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Form state
@@ -98,16 +105,43 @@ const Models3D: React.FC = () => {
     }
   }
 
-  const handleDelete = async (modelId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este arquivo?')) return
+  const handleDeleteClick = (modelId: string) => {
+    setModelToDelete(modelId)
+    setShowDeleteConfirm(true)
+  }
 
-    const response = await model3dService.delete(modelId)
-    if (!response.error) {
-      loadModels()
-      loadStats()
-      showToast('Modelo excluído com sucesso!', 'success')
-    } else {
-      showToast(response.error || 'Erro ao excluir modelo', 'error')
+  const handleDelete = async () => {
+    if (!modelToDelete) return
+
+    setDeletingId(modelToDelete)
+    try {
+      const response = await model3dService.delete(modelToDelete)
+      if (!response.error) {
+        loadModels()
+        loadStats()
+        showToast('Modelo excluído com sucesso!', 'success')
+        setShowDeleteConfirm(false)
+        setModelToDelete(null)
+      } else {
+        showToast(response.error || 'Erro ao excluir modelo', 'error')
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleRetryProcessing = async (modelId: string) => {
+    setRetryingId(modelId)
+    try {
+      const response = await model3dService.retryProcessing(modelId)
+      if (!response.error) {
+        showToast('Reprocessamento iniciado', 'success')
+        loadModels()
+      } else {
+        showToast(response.error || 'Erro ao reprocessar', 'error')
+      }
+    } finally {
+      setRetryingId(null)
     }
   }
 
@@ -221,7 +255,7 @@ const Models3D: React.FC = () => {
         </div>
       ) : models.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
-          <div className="text-6xl mb-4">📦</div>
+          <Inventory className="text-6xl mb-4 text-gray-400 mx-auto" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum modelo 3D</h3>
           <p className="text-gray-500">Faça upload do seu primeiro modelo 3D</p>
         </div>
@@ -237,7 +271,7 @@ const Models3D: React.FC = () => {
                 {model.thumbnailUrl ? (
                   <img src={model.thumbnailUrl} alt={model.title} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="text-4xl">🎨</div>
+                  <Palette className="text-4xl text-gray-400" />
                 )}
                 
                 {/* Status badge */}
@@ -269,8 +303,14 @@ const Models3D: React.FC = () => {
 
                 {/* Stats */}
                 <div className="flex gap-4 mt-3 text-sm text-gray-500">
-                  <span>👁 {model.views}</span>
-                  <span>⬇️ {model.downloads}</span>
+                  <span className="flex items-center gap-1">
+                    <Visibility className="text-base" />
+                    {model.views}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Download className="text-base" />
+                    {model.downloads}
+                  </span>
                 </div>
 
                 {/* Actions */}
@@ -284,19 +324,26 @@ const Models3D: React.FC = () => {
                     </button>
                   )}
                   {model.status === 'failed' && (
-                    <button
-                      onClick={() => model3dService.retryProcessing(model.id)}
-                      className="flex-1 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition"
+                    <LoadingButton
+                      onClick={() => handleRetryProcessing(model.id)}
+                      loading={retryingId === model.id}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 px-3 py-1.5 bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
                     >
                       Reprocessar
-                    </button>
+                    </LoadingButton>
                   )}
-                  <button
-                    onClick={() => handleDelete(model.id)}
-                    className="px-3 py-1.5 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition"
+                  <LoadingButton
+                    onClick={() => handleDeleteClick(model.id)}
+                    loading={deletingId === model.id}
+                    variant="ghost"
+                    size="sm"
+                    className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200"
+                    icon={<Delete className="text-base" />}
                   >
-                    🗑
-                  </button>
+                    Excluir
+                  </LoadingButton>
                 </div>
               </div>
             </div>
@@ -386,18 +433,21 @@ const Models3D: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
                 disabled={isUploading}
               >
                 Cancelar
               </button>
-              <button
+              <LoadingButton
                 onClick={handleUpload}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-                disabled={isUploading || !uploadForm.title}
+                loading={isUploading}
+                variant="primary"
+                fullWidth
+                className="flex-1"
+                disabled={!uploadForm.title}
               >
-                {isUploading ? 'Enviando...' : 'Enviar'}
-              </button>
+                Enviar
+              </LoadingButton>
             </div>
           </div>
         </div>
@@ -419,7 +469,7 @@ const Models3D: React.FC = () => {
                 onClick={() => setShowViewerModal(false)}
                 className="p-2 hover:bg-white/10 rounded transition"
               >
-                ✕
+                <Close />
               </button>
             </div>
 
@@ -436,6 +486,22 @@ const Models3D: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false)
+          setModelToDelete(null)
+        }}
+        onConfirm={handleDelete}
+        title="Excluir Arquivo"
+        message="Tem certeza que deseja excluir este arquivo? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={deletingId !== null}
+      />
     </div>
   )
 }

@@ -14,13 +14,13 @@ import NotificationsIcon from '@mui/icons-material/Notifications'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DeleteIcon from '@mui/icons-material/Delete'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
-import ErrorIcon from '@mui/icons-material/Error'
 import WarningIcon from '@mui/icons-material/Warning'
 import InfoIcon from '@mui/icons-material/Info'
 import ViewInArIcon from '@mui/icons-material/ViewInAr'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNotifications } from '../../contexts/NotificationContext'
+import LoadingButton from '../common/LoadingButton'
 import arkLogo from '../../assets/ark-logo.png'
 
 interface DashboardLayoutProps {
@@ -31,9 +31,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, isLoading } = useNotifications()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [, setMarkingAsReadId] = useState<string | null>(null)
+  const [deletingNotificationId, setDeletingNotificationId] = useState<string | null>(null)
+  const [markingAllAsRead, setMarkingAllAsRead] = useState(false)
   const notificationRef = useRef<HTMLDivElement>(null)
 
   const isActive = (path: string) => location.pathname === path
@@ -67,28 +70,72 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleNotificationClick = (notification: any) => {
-    markAsRead(notification.id)
-    if (notification.link) {
-      navigate(notification.link)
-      setIsNotificationOpen(false)
+  const handleNotificationClick = async (notification: any) => {
+    if (!notification.read) {
+      setMarkingAsReadId(notification.id)
+      try {
+        await markAsRead(notification.id)
+      } finally {
+        setMarkingAsReadId(null)
+      }
+    }
+    // Navegar baseado no tipo de notificação
+    if (notification.relatedType && notification.relatedId) {
+      switch (notification.relatedType) {
+        case 'project':
+          navigate(`/architect/projects`)
+          break
+        case 'event':
+          navigate(`/architect/calendar`)
+          break
+        case 'message':
+          navigate(`/architect/messages`)
+          break
+        case 'review':
+          navigate(`/architect/profile`)
+          break
+      }
+    }
+    setIsNotificationOpen(false)
+  }
+
+  const handleMarkAllAsRead = async () => {
+    setMarkingAllAsRead(true)
+    try {
+      await markAllAsRead()
+    } finally {
+      setMarkingAllAsRead(false)
+    }
+  }
+
+  const handleDeleteNotification = async (id: string) => {
+    setDeletingNotificationId(id)
+    try {
+      await deleteNotification(id)
+    } finally {
+      setDeletingNotificationId(null)
     }
   }
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'success':
+      case 'project_update':
+      case 'verification':
         return <CheckCircleOutlineIcon sx={{ fontSize: 20, color: '#10b981' }} />
-      case 'warning':
+      case 'event_reminder':
         return <WarningIcon sx={{ fontSize: 20, color: '#f59e0b' }} />
-      case 'error':
-        return <ErrorIcon sx={{ fontSize: 20, color: '#ef4444' }} />
+      case 'review':
+        return <InfoIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
+      case 'message':
+      case 'favorite':
+        return <InfoIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
       default:
         return <InfoIcon sx={{ fontSize: 20, color: '#3b82f6' }} />
     }
   }
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
     
     if (seconds < 60) return 'agora mesmo'
@@ -142,19 +189,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50">
                     <h3 className="font-semibold text-sm text-gray-900">Notificações</h3>
                     {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+                      <LoadingButton
+                        onClick={handleMarkAllAsRead}
+                        loading={markingAllAsRead}
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-primary-600 hover:text-primary-700 font-medium p-1"
+                        icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
                       >
-                        <CheckCircleIcon sx={{ fontSize: 14 }} />
                         Marcar todas
-                      </button>
+                      </LoadingButton>
                     )}
                   </div>
 
                   {/* Notifications List */}
                   <div className="max-h-96 overflow-y-auto">
-                    {notifications.length > 0 ? (
+                    {isLoading ? (
+                      <div className="px-4 py-8 text-center text-gray-500">
+                        <p className="text-xs">Carregando...</p>
+                      </div>
+                    ) : notifications.length > 0 ? (
                       notifications.map((notification) => (
                         <div
                           key={notification.id}
@@ -172,15 +226,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                                 <p className="font-semibold text-xs text-gray-900 truncate">
                                   {notification.title}
                                 </p>
-                                <button
+                                <LoadingButton
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    deleteNotification(notification.id)
+                                    handleDeleteNotification(notification.id)
                                   }}
-                                  className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 p-0.5"
+                                  loading={deletingNotificationId === notification.id}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-gray-400 hover:text-red-500 flex-shrink-0 p-0.5 min-w-0"
+                                  icon={<DeleteIcon sx={{ fontSize: 14 }} />}
                                 >
-                                  <DeleteIcon sx={{ fontSize: 14 }} />
-                                </button>
+                                  <span className="sr-only">Excluir</span>
+                                </LoadingButton>
                               </div>
                               <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                                 {notification.message}
